@@ -18,9 +18,9 @@ public class CommandResult<T>
         return new CommandResult<T>(true, data, null);
     }
 
-    public static CommandResult<object> Success()
+    public static CommandResult<T> Success()
     {
-        return new CommandResult<object>(true, null, null);
+        return new CommandResult<T>(true, default, null);
     }
 
     public static CommandResult<T> Failure(int statusCode, string message, Dictionary<string, string>? details = null)

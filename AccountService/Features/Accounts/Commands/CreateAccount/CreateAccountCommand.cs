@@ -7,15 +7,18 @@ namespace AccountService.Features.Accounts.Commands.CreateAccount;
 
 public record CreateAccountCommand : IRequest<CommandResult<Guid>>
 {
-    [SwaggerSchema(Description = "Идентификатор владельца счета")]
-    public Guid OwnerId { get; init; }
+    [SwaggerSchema(Description = "Идентификатор владельца счета (GUID)")]
+    public Guid OwnerId { get; set; }
 
-    [SwaggerSchema(Description = "Трехбуквенный код валюты (USD, EUR, RUB)")]
+    [SwaggerSchema(Description = "Трёхбуквенный код валюты в формате ISO 4217 (например, USD, EUR, RUB)")]
     public string Currency { get; init; } = string.Empty;
 
-    [SwaggerSchema(Description = "Тип счета (Credit = 0, Deposit = 1, Checking = 2)")]
+    [SwaggerSchema(Description = AccountTypeDescriptions.Description)]
     public AccountType Type { get; init; }
 
-    [SwaggerSchema(Description = "Процентная ставка (обязательна для депозитов и кредитов)")]
+    [SwaggerSchema(Description =
+        "Процентная ставка:\n" +
+        " - Обязательна для депозитных и кредитных счетов\n" +
+        " - Для расчетного (Checking) счета должна быть null")]
     public decimal? InterestRate { get; init; }
 }

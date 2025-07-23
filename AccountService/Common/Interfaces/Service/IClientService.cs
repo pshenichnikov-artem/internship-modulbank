@@ -2,5 +2,5 @@
 
 public interface IClientService
 {
-    Task<bool> VerifyClientExistsAsync(Guid clientId);
+    Task<bool> IsClientExistsAsync(Guid clientId, CancellationToken cancellationToken);
 }

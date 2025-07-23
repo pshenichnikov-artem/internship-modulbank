@@ -1,25 +1,21 @@
-﻿using AccountService.Common.Interfaces.Repository;
-using AccountService.Common.Interfaces.Service;
+﻿using AccountService.Common.Validators;
 using FluentValidation;
 
 namespace AccountService.Features.Accounts.Commands.UpdateAccount;
 
 public class UpdateAccountCommandValidator : AbstractValidator<UpdateAccountCommand>
 {
-    public UpdateAccountCommandValidator(IAccountRepository accountRepository, ICurrencyService currencyService)
+    public UpdateAccountCommandValidator()
     {
         RuleFor(x => x.Id)
-            .NotEmpty().WithMessage("Id счета не может быть пустым");
+            .MustBeValid("Id счета");
 
         RuleFor(x => x.Currency)
-            .Length(3).When(x => !string.IsNullOrEmpty(x.Currency))
-            .WithMessage("Код валюты должен состоять из 3 символов")
-            .MustAsync(async (currency, cancellation) =>
-                string.IsNullOrEmpty(currency) || await currencyService.IsSupportedCurrencyAsync(currency))
-            .WithMessage(x => $"Валюта {x.Currency} не поддерживается");
+            .MustBeValidCurrencyFormat();
 
         RuleFor(x => x.InterestRate)
-            .GreaterThan(0).When(x => x.InterestRate.HasValue)
-            .WithMessage("Процентная ставка должна быть больше 0");
+            .Must(rate => rate is >= 1 and <= 50)
+            .When(x => x.InterestRate.HasValue)
+            .WithMessage("Процентная ставка должна быть в диапазоне от 1 до 50%");
     }
 }

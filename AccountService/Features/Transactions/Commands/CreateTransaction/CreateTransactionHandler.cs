@@ -1,15 +1,15 @@
-﻿using AccountService.Common.Interfaces;
+﻿using AccountService.Common.Interfaces.Service;
 using AccountService.Common.Models.Domain.Results;
 using MediatR;
 
 namespace AccountService.Features.Transactions.Commands.CreateTransaction;
 
 public class CreateTransactionHandler(
-    ITransactionProcessor transactionProcessor)
+    ITransactionService transactionService)
     : IRequestHandler<CreateTransactionCommand, CommandResult<Guid>>
 {
     public async Task<CommandResult<Guid>> Handle(CreateTransactionCommand request, CancellationToken cancellationToken)
     {
-        return await transactionProcessor.CreateTransactionAsync(request, cancellationToken);
+        return await transactionService.CreateTransactionAsync(request, cancellationToken);
     }
 }

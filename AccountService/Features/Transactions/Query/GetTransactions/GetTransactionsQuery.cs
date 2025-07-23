@@ -14,8 +14,15 @@ public class GetTransactionsQuery : IRequest<CommandResult<PagedResult<Transacti
     [SwaggerSchema(Description = "Параметры пагинации")]
     public PaginationDto Pagination { get; init; } = new();
 
-    [SwaggerSchema(Description = "Параметры сортировки")]
-    public List<SortDto> SortOrders { get; init; } = new();
+    [SwaggerSchema(Description =
+        "Параметры сортировки. Доступные поля:\n" +
+        " - Id\n" +
+        " - AccountId\n" +
+        " - CounterpartyAccountId\n" +
+        " - Amount\n" +
+        " - Currency\n" +
+        " - Timestamp")]
+    public List<SortDto> SortOrders { get; init; } = [];
 }
 
 public record TransactionsQueryFilter
@@ -32,6 +39,6 @@ public record TransactionsQueryFilter
     [SwaggerSchema(Description = "Конечная дата для фильтрации транзакций")]
     public DateTime? ToDate { get; init; }
 
-    [SwaggerSchema(Description = "Список типов транзакций для фильтрации (Credit = 0, Debit = 1)")]
+    [SwaggerSchema(Description = TransactionTypeDescriptions.Description)]
     public List<TransactionType>? Types { get; init; }
 }

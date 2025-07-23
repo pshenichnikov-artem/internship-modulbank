@@ -1,4 +1,4 @@
-﻿using AccountService.Common.Interfaces.Service;
+﻿using AccountService.Common.Validators;
 using AccountService.Features.Accounts.Model;
 using FluentValidation;
 
@@ -18,24 +18,25 @@ public class GetAccountsQueryValidator : AbstractValidator<GetAccountsQuery>
         nameof(Account.ClosedAt)
     };
 
-    public GetAccountsQueryValidator(ICurrencyService currencyService)
+    public GetAccountsQueryValidator()
     {
-        RuleFor(x => x.PaginationDto.Page)
+        RuleFor(x => x.Pagination.Page)
             .GreaterThan(0).WithMessage("Номер страницы должен быть больше 0");
 
-        RuleFor(x => x.PaginationDto.PageSize)
+        RuleFor(x => x.Pagination.PageSize)
             .GreaterThan(0).WithMessage("Размер страницы должен быть больше 0");
 
         RuleForEach(x => x.Filters.Currencies)
-            .Length(3).When(x => x != null)
-            .WithMessage("Код валюты должен состоять из 3 символов")
-            .MustAsync(async (currency, _) => await currencyService.IsSupportedCurrencyAsync(currency))
-            .When(x => x.Filters.Currencies != null && x.Filters.Currencies.Any())
-            .WithMessage(currency => $"Валюта {currency} не поддерживается");
+            .MustBeValidCurrencyFormatIfSpecified();
 
         RuleForEach(x => x.SortOrders)
             .Must(sortOrder => AllowedSortFields.Contains(sortOrder.Field))
-            .WithMessage(_ =>
-                $"Поле сортировки не поддерживается. Допустимые поля: {string.Join(", ", AllowedSortFields)}");
+            .WithMessage((_, field) =>
+                $"Поле {field} не поддерживается. Допустимые поля: {string.Join(", ", AllowedSortFields)}");
+
+        RuleForEach(x => x.SortOrders)
+            .Must(sortOrder =>
+                sortOrder.Direction == 0 || (int)sortOrder.Direction == 1)
+            .WithMessage(_ => "Направление сортировки должно быть '0'(asc) или '1'(desc)");
     }
 }

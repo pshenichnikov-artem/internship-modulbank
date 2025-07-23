@@ -8,26 +8,34 @@ namespace AccountService.Features.Accounts.Query.GetAccounts;
 
 public class GetAccountsQuery : IRequest<CommandResult<PagedResult<AccountDto>>>
 {
-    public AccountQueryFilers Filters { get; init; } = new();
+    [SwaggerSchema(Description = "Фильтры для поиска счетов")]
+    public AccountQueryFilter Filters { get; init; } = new();
 
     [SwaggerSchema(Description = "Параметры пагинации")]
-    public PaginationDto PaginationDto { get; init; } = new();
+    public PaginationDto Pagination { get; init; } = new();
 
-    [SwaggerSchema(Description = "Параметры сортировки")]
-    public List<SortDto> SortOrders { get; init; } = [];
+    [SwaggerSchema(Description =
+        "Параметры сортировки. Допустимые поля для сортировки:\n" +
+        "- Id — идентификатор счета\n" +
+        "- OwnerId — идентификатор владельца счета\n" +
+        "- Currency — трехбуквенный код валюты (например, USD, EUR, RUB)\n" +
+        "- Balance — текущий баланс счета\n" +
+        "- Type — тип счета (0 - Credit, 1 - Deposit, 2- Checking)\n" +
+        "- InterestRate — процентная ставка\n" +
+        "- OpenedAt — дата открытия счета\n" +
+        "- ClosedAt — дата закрытия счета (если счет закрыт)")]
+
+    public List<SortDto>? SortOrders { get; init; } = [];
 }
 
-public record AccountQueryFilers
+public record AccountQueryFilter
 {
     [SwaggerSchema(Description = "Список идентификаторов владельцев счетов для фильтрации")]
     public List<Guid>? OwnerIds { get; init; }
 
-    [SwaggerSchema(Description = "Список трехбуквенных кодов валют для фильтрации (USD, EUR, RUB)")]
+    [SwaggerSchema(Description = "Список трёхбуквенных кодов валют для фильтрации (например, USD, EUR, RUB)")]
     public List<string>? Currencies { get; init; }
 
-    [SwaggerSchema(Description = "Список типов счетов для фильтрации (Credit = 0, Deposit = 1, Checking = 2)")]
+    [SwaggerSchema(Description = AccountTypeDescriptions.Description)]
     public List<AccountType>? Types { get; init; }
-
-    [SwaggerSchema(Description = "Фильтр по статусу счета: true - только активные, false - только закрытые")]
-    public bool? IsActive { get; init; }
 }

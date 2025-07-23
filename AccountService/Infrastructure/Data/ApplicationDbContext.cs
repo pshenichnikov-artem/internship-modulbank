@@ -39,7 +39,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                     v => v.ToUpperInvariant(),
                     v => v
                 );
-            ;
+
             entity.Property(e => e.Balance).HasPrecision(18, 2);
             entity.Property(e => e.InterestRate).HasPrecision(5, 2);
 
@@ -56,7 +56,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                     v => v.ToUpperInvariant(),
                     v => v
                 );
-            ;
+
             entity.Property(e => e.Amount).HasPrecision(18, 2);
         });
     }
@@ -68,8 +68,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             {
                 entry.State = EntityState.Modified;
                 entry.Entity.IsDeleted = true;
-                if (entry.Entity.ClosedAt == null)
-                    entry.Entity.ClosedAt = DateTime.UtcNow;
+                entry.Entity.ClosedAt ??= DateTime.UtcNow;
             }
 
         foreach (var entry in ChangeTracker.Entries<Transaction>())
@@ -77,8 +76,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             {
                 entry.State = EntityState.Modified;
                 entry.Entity.IsCanceled = true;
-                if (entry.Entity.CanceledAt == null)
-                    entry.Entity.CanceledAt = DateTime.UtcNow;
+                entry.Entity.CanceledAt ??= DateTime.UtcNow;
             }
 
         return await base.SaveChangesAsync(cancellationToken);

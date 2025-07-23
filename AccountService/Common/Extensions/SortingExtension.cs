@@ -5,30 +5,20 @@ namespace AccountService.Common.Extensions;
 
 public static class SortingExtension
 {
-    public static IQueryable<T> Sort<T>(this IQueryable<T> query, SortOrder sortRequest)
-    {
-        if (string.IsNullOrWhiteSpace(sortRequest.PropertyName))
-            return query;
-
-        return query.Sort([sortRequest]);
-    }
-
     public static IQueryable<T> Sort<T>(this IQueryable<T> query, IEnumerable<SortOrder> sortRequests)
     {
         IOrderedQueryable<T>? orderedQuery = null;
 
-        foreach (var sort in sortRequests)
+        foreach (var (propertyName, isDescending) in sortRequests)
         {
-            if (string.IsNullOrWhiteSpace(sort.PropertyName))
+            if (string.IsNullOrWhiteSpace(propertyName))
                 continue;
 
             var propertyInfo = typeof(T).GetProperties()
-                .FirstOrDefault(p => string.Equals(p.Name, sort.PropertyName, StringComparison.OrdinalIgnoreCase));
+                .FirstOrDefault(p => string.Equals(p.Name, propertyName, StringComparison.OrdinalIgnoreCase));
 
             if (propertyInfo == null)
                 continue;
-
-            var isDescending = sort.Descending;
 
             if (orderedQuery == null)
                 orderedQuery = isDescending

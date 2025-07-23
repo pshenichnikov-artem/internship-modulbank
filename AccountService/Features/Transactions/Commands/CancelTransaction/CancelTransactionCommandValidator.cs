@@ -1,4 +1,5 @@
-﻿using FluentValidation;
+﻿using AccountService.Common.Validators;
+using FluentValidation;
 
 namespace AccountService.Features.Transactions.Commands.CancelTransaction;
 
@@ -7,6 +8,6 @@ public class CancelTransactionCommandValidator : AbstractValidator<CancelTransac
     public CancelTransactionCommandValidator()
     {
         RuleFor(x => x.TransactionId)
-            .NotEmpty().WithMessage("Идентификатор транзакции не может быть пустым");
+            .MustBeValid("Идентификатор транзакции");
     }
 }

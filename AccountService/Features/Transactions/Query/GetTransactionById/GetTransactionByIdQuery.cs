@@ -10,6 +10,15 @@ public record GetTransactionByIdQuery(Guid Id, IEnumerable<string>? Fields = nul
     [SwaggerSchema(Description = "Идентификатор транзакции")]
     public Guid Id { get; } = Id;
 
-    [SwaggerSchema(Description = "Список полей для включения в ответ (если не указано, возвращаются все поля)")]
+    [SwaggerSchema(Description =
+        "Список полей для включения в ответ (если не указано, возвращаются все поля):\n" +
+        " - Id\n" +
+        " - AccountId\n" +
+        " - CounterpartyAccountId\n" +
+        " - Amount\n" +
+        " - Currency\n" +
+        " - Type\n" +
+        " - Description\n" +
+        " - Timestamp")]
     public IEnumerable<string>? Fields { get; } = Fields;
 }

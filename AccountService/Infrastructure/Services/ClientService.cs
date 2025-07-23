@@ -4,7 +4,7 @@ namespace AccountService.Infrastructure.Services;
 
 public class ClientService : IClientService
 {
-    public Task<bool> VerifyClientExistsAsync(Guid clientId)
+    public Task<bool> IsClientExistsAsync(Guid clientId, CancellationToken cancellationToken)
     {
         return Task.FromResult(true);
     }

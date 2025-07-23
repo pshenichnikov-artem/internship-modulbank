@@ -2,21 +2,19 @@
 using AccountService.Common.Models.Domain.Results;
 using AccountService.Features.Accounts.Model;
 using AutoMapper;
-using FluentValidation;
 using MediatR;
 
 namespace AccountService.Features.Accounts.Query.GetAccountById;
 
 public class GetAccountByIdHandler(
     IAccountRepository accountRepository,
-    IMapper mapper,
-    IValidator<GetAccountByIdQuery> validator)
+    IMapper mapper)
     : IRequestHandler<GetAccountByIdQuery, CommandResult<Dictionary<string, object?>>>
 {
     public async Task<CommandResult<Dictionary<string, object?>>> Handle(GetAccountByIdQuery request,
         CancellationToken cancellationToken)
     {
-        var account = await accountRepository.GetAccountByIdAsync(request.Id);
+        var account = await accountRepository.GetAccountByIdAsync(request.Id, cancellationToken);
         if (account == null)
             return CommandResult<Dictionary<string, object?>>.Failure(404, $"Счет с ID {request.Id} не найден");
 

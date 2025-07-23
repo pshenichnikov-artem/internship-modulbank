@@ -8,4 +8,7 @@ public record CancelTransactionCommand : IRequest<CommandResult<object>>
 {
     [SwaggerSchema(Description = "Идентификатор транзакции для отмены")]
     public Guid TransactionId { get; init; }
+
+    [SwaggerSchema(Description = "Идентификатор владельца счета(можно передавать null, на сервере всегда 1 владелец")]
+    public Guid OwnerId { get; init; }
 }

@@ -1,4 +1,5 @@
-﻿using AccountService.Features.Transactions.Models;
+﻿using AccountService.Common.Validators;
+using AccountService.Features.Transactions.Models;
 using FluentValidation;
 
 namespace AccountService.Features.Transactions.Query.GetTransactionById;
@@ -20,12 +21,12 @@ public class GetTransactionByIdQueryValidator : AbstractValidator<GetTransaction
     public GetTransactionByIdQueryValidator()
     {
         RuleFor(x => x.Id)
-            .NotEmpty().WithMessage("ID транзакции не может быть пустым");
+            .MustBeValid("ID транзакции");
 
         RuleForEach(x => x.Fields)
             .Must(field => AllowedFields.Contains(field))
             .When(x => x.Fields != null && x.Fields.Any())
-            .WithMessage(field =>
+            .WithMessage((_, field) =>
                 $"Поле '{field}' не существует. Допустимые поля: {string.Join(", ", AllowedFields)}");
     }
 }

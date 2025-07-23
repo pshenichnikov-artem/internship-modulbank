@@ -1,4 +1,5 @@
-﻿using AccountService.Features.Accounts.Model;
+﻿using AccountService.Common.Validators;
+using AccountService.Features.Accounts.Model;
 using FluentValidation;
 
 namespace AccountService.Features.Accounts.Query.GetAccountById;
@@ -21,12 +22,12 @@ public class GetAccountByIdQueryValidator : AbstractValidator<GetAccountByIdQuer
     public GetAccountByIdQueryValidator()
     {
         RuleFor(x => x.Id)
-            .NotEmpty().WithMessage("ID счета не может быть пустым");
+            .MustBeValid("ID счета");
 
         RuleForEach(x => x.Fields)
             .Must(field => AllowedFields.Contains(field))
             .When(x => x.Fields != null && x.Fields.Any())
-            .WithMessage(field =>
+            .WithMessage((_, field) =>
                 $"Поле '{field}' не существует. Допустимые поля: {string.Join(", ", AllowedFields)}");
     }
 }

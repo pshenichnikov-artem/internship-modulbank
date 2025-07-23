@@ -30,6 +30,11 @@ public static class ApiResult
         return new ConflictObjectResult(new ErrorResponse(409, message));
     }
 
+    public static ObjectResult Forbidden(string message)
+    {
+        return new ConflictObjectResult(new ErrorResponse(403, message));
+    }
+
     public static ObjectResult Problem(string message, Dictionary<string, string>? details = null)
     {
         return new ObjectResult(new ErrorResponse(500, message, details))
@@ -41,20 +46,15 @@ public static class ApiResult
     public static ObjectResult FromCommandResult<T>(CommandResult<T> result, string? createdAtActionName = null,
         object? routeValues = null)
     {
-        if (result.IsSuccess)
-        {
-            var data = result.Data;
+        if (!result.IsSuccess)
+            return result.CommandError is null
+                ? Problem("Операция завершилась неудачно, но информация об ошибке не была предоставлена.")
+                : FromStatusCode(result.CommandError.StatusCode, result.CommandError.Message,
+                    result.CommandError.Details);
 
-            if (createdAtActionName != null)
-                return Created($"/api/{createdAtActionName}/{routeValues}", data);
+        var data = result.Data;
 
-            return Ok(data);
-        }
-
-        if (result.CommandError is null)
-            return Problem("Operation failed but no error information was provided.");
-
-        return FromStatusCode(result.CommandError.StatusCode, result.CommandError.Message, result.CommandError.Details);
+        return createdAtActionName != null ? Created($"/api/{createdAtActionName}/{routeValues}", data) : Ok(data);
     }
 
     public static ObjectResult FromStatusCode(int statusCode, string message,
@@ -66,6 +66,7 @@ public static class ApiResult
             201 => Created(string.Empty, message),
             400 => BadRequest(message, details),
             404 => NotFound(message),
+            403 => Forbidden(message),
             409 => Conflict(message),
             _ => new ObjectResult(new ErrorResponse(statusCode, message, details))
             {

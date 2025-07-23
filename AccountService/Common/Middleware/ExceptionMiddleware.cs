@@ -1,7 +1,6 @@
 ﻿using System.Net;
 using System.Text.Json;
 using AccountService.Common.Models.Api;
-using FluentValidation;
 
 namespace AccountService.Common.Middleware;
 
@@ -13,7 +12,7 @@ public static class ExceptionMiddlewareExtensions
     }
 }
 
-public class ExceptionMiddleware(RequestDelegate next)
+public class ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddleware> logger)
 {
     public async Task InvokeAsync(HttpContext context)
     {
@@ -21,35 +20,26 @@ public class ExceptionMiddleware(RequestDelegate next)
         {
             await next(context);
         }
-        catch (ValidationException ex)
-        {
-            await HandleValidationExceptionAsync(context, ex);
-        }
         catch (Exception ex)
         {
+            LogException(context, ex);
             await HandleExceptionAsync(context, ex);
         }
     }
 
-    private async Task HandleValidationExceptionAsync(HttpContext context, ValidationException exception)
+    private void LogException(HttpContext context, Exception exception)
     {
-        context.Response.Clear();
-        context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
-        context.Response.ContentType = "application/json";
-
-        var errors = exception.Errors
-            .GroupBy(e => e.PropertyName)
-            .ToDictionary(
-                g => g.Key,
-                g => string.Join("\n", g.Select(e => e.ErrorMessage))
-            );
-
-        var response = ApiResult.BadRequest("Ошибка валидации", errors);
-
-        await context.Response.WriteAsJsonAsync(response.Value);
+        var request = context.Request;
+        logger.LogError(
+            exception,
+            "Необработанное исключение при обработке запроса {Method} {Path}{QueryString}. TraceId: {TraceId}",
+            request.Method,
+            request.Path,
+            request.QueryString,
+            context.TraceIdentifier);
     }
 
-    private async Task HandleExceptionAsync(HttpContext context, Exception exception)
+    private static async Task HandleExceptionAsync(HttpContext context, Exception exception)
     {
         context.Response.Clear();
         context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;

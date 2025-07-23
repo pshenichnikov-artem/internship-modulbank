@@ -12,30 +12,23 @@ public class GetAccountsHandler(IAccountRepository accountRepository, IMapper ma
     public async Task<CommandResult<PagedResult<AccountDto>>> Handle(GetAccountsQuery request,
         CancellationToken cancellationToken)
     {
-        try
-        {
-            var (accounts, totalCount) = await accountRepository.GetAccountsAsync(
-                request.Filters.OwnerIds,
-                request.Filters.Currencies,
-                request.Filters.Types,
-                request.Filters.IsActive,
-                request.SortOrders.Select(so => so.ToSortOrder()).ToList(),
-                request.PaginationDto.Page,
-                request.PaginationDto.PageSize);
+        var (accounts, totalCount) = await accountRepository.GetAccountsAsync(
+            request.Filters.OwnerIds,
+            request.Filters.Currencies,
+            request.Filters.Types,
+            request.SortOrders?.Select(so => so.ToSortOrder()).ToList(),
+            request.Pagination.Page,
+            request.Pagination.PageSize,
+            cancellationToken);
 
-            var accountsDto = mapper.Map<List<AccountDto>>(accounts);
+        var accountsDto = mapper.Map<List<AccountDto>>(accounts);
 
-            var pagedResult = new PagedResult<AccountDto>(
-                accountsDto,
-                totalCount,
-                request.PaginationDto.Page,
-                request.PaginationDto.PageSize);
+        var pagedResult = new PagedResult<AccountDto>(
+            accountsDto,
+            totalCount,
+            request.Pagination.Page,
+            request.Pagination.PageSize);
 
-            return CommandResult<PagedResult<AccountDto>>.Success(pagedResult);
-        }
-        catch (Exception ex)
-        {
-            return CommandResult<PagedResult<AccountDto>>.Failure(500, ex.Message);
-        }
+        return CommandResult<PagedResult<AccountDto>>.Success(pagedResult);
     }
 }

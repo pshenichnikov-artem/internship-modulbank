@@ -21,7 +21,8 @@ public class GetTransactionsHandler(ITransactionRepository transactionRepository
                 request.Filter.Types,
                 request.SortOrders.Select(so => so.ToSortOrder()).ToList(),
                 request.Pagination.Page,
-                request.Pagination.PageSize);
+                request.Pagination.PageSize,
+                cancellationToken);
 
             var transactionsDto = mapper.Map<List<TransactionDto>>(transactions);
 

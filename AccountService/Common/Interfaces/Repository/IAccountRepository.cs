@@ -5,21 +5,21 @@ namespace AccountService.Common.Interfaces.Repository;
 
 public interface IAccountRepository
 {
-    Task BeginTransactionAsync();
-    Task CommitAsync();
-    Task RollbackAsync();
+    Task BeginTransactionAsync(CancellationToken cancellationToken = default);
+    Task CommitAsync(CancellationToken cancellationToken = default);
+    Task RollbackAsync(CancellationToken cancellationToken = default);
 
     Task<(IEnumerable<Account> accounts, int totalCount)> GetAccountsAsync(
         List<Guid>? ownerIds = null,
         List<string>? currencies = null,
         List<AccountType>? types = null,
-        bool? isActive = null,
         List<SortOrder>? sortOrders = null,
         int page = 1,
-        int pageSize = 100);
+        int pageSize = 100,
+        CancellationToken cancellationToken = default);
 
-    Task<Account?> GetAccountByIdAsync(Guid id);
-    Task<Account?> GetAccountByIdForUpdateAsync(Guid id);
-    Task<Account> CreateAccountAsync(Account account);
-    Task<Account> UpdateAccountAsync(Account account);
+    Task<Account?> GetAccountByIdAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<Account?> GetAccountByIdForUpdateAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<Account> CreateAccountAsync(Account account, CancellationToken cancellationToken = default);
+    Task<Account> UpdateAccountAsync(Account account, CancellationToken cancellationToken = default);
 }

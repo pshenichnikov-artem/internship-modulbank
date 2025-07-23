@@ -5,9 +5,10 @@ using Swashbuckle.AspNetCore.Annotations;
 namespace AccountService.Features.Accounts.Query.GetAccountById;
 
 public record GetAccountByIdQuery(
-    [property: SwaggerSchema(Description = "Идентификатор счета")]
+    [SwaggerSchema(Description = "Идентификатор счета (GUID)")]
     Guid Id,
-    [property:
-        SwaggerSchema(Description = "Список полей для включения в ответ (если не указано, возвращаются все поля)")]
+    [SwaggerSchema(Description =
+        "Список полей для включения в ответ. Если не указан, возвращаются все поля.\n" +
+        "Пример значений: \"Id\", \"OwnerId\", \"Currency\", \"Type\", \"Balance\", \"InterestRate\", \"IsActive\", \"ClosedAt\"")]
     IEnumerable<string>? Fields = null)
     : IRequest<CommandResult<Dictionary<string, object?>>>;

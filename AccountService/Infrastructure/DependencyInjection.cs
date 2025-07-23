@@ -1,5 +1,4 @@
-﻿using AccountService.Common.Interfaces;
-using AccountService.Common.Interfaces.Repository;
+﻿using AccountService.Common.Interfaces.Repository;
 using AccountService.Common.Interfaces.Service;
 using AccountService.Features.Transactions;
 using AccountService.Infrastructure.Data;
@@ -18,10 +17,11 @@ public static class DependencyInjection
 
         services.AddScoped<IAccountRepository, AccountRepository>();
         services.AddScoped<ITransactionRepository, TransactionRepository>();
-        services.AddScoped<ITransactionProcessor, TransactionProcessor>();
 
         services.AddSingleton<IClientService, ClientService>();
         services.AddSingleton<ICurrencyService, CurrencyService>();
+        services.AddScoped<IAccountService, Features.Accounts.AccountService>();
+        services.AddScoped<ITransactionService, TransactionService>();
 
 
         return services;

@@ -8,4 +8,6 @@ public record DeleteAccountCommand : IRequest<CommandResult<object>>
 {
     [SwaggerSchema(Description = "Идентификатор счета для удаления")]
     public Guid AccountId { get; init; }
+
+    public Guid OwnerId { get; init; }
 }
