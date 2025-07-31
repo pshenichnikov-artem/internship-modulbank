@@ -92,6 +92,16 @@ try
         options.EnableAnnotations();
     });
 
+    builder.Services.AddCors(options =>
+    {
+        options.AddPolicy("AllowAny", policy =>
+        {
+            policy.WithOrigins("*")
+                .AllowAnyHeader()
+                .AllowAnyMethod();
+        });
+    });
+
     builder.Services.AddInfrastructure();
 
     var app = builder.Build();
@@ -115,7 +125,7 @@ try
     app.UsePerformanceLogging();
     app.UseGlobalExceptionHandler();
 
-    app.UsePerformanceLogging();
+    app.UseCors("AllowAny");
 
     app.UseSerilogRequestLogging(options =>
     {
