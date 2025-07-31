@@ -1,0 +1,40 @@
+version: "3.8"
+
+services:
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:21.1.1
+    container_name: keycloak
+    environment:
+      - KC_DB=dev-mem
+      - KC_HTTP_ENABLED=true
+      - KC_LOG_LEVEL=INFO
+      - KC_METRICS_ENABLED=false
+      - KEYCLOAK_ADMIN=${KEYCLOAK_ADMIN}
+      - KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD}
+      - KC_HOSTNAME_URL=http://localhost:${KEYCLOAK_PORT}
+      - KC_HTTP_ENABLED=true
+    volumes:
+      - ./realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+    command:
+      - start-dev
+      - --import-realm
+    ports:
+      - "${KEYCLOAK_PORT}:8080"
+    restart: unless-stopped
+
+  account-service:
+    build:
+      context: AccountService/
+      dockerfile: Dockerfile
+    container_name: account-service
+    ports:
+      - "${ACCOUNT_SERVICE_PORT}:80"
+    depends_on:
+      - keycloak
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - Authentication__AuthenticationServerUrl=${AUTHENTICATION_SERVER_URL}
+      - Authentication__Audience=${AUDIENCE}
+      - Authentication__Realm=${REALM}
+    restart: unless-stopped
