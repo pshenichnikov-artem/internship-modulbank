@@ -1,3 +1,4 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Text.Json;
 using AccountService.Common.Behaviors;
 using AccountService.Common.Filters;
@@ -12,6 +13,7 @@ using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Serilog;
 using Serilog.Events;
@@ -81,6 +83,15 @@ try
     var provider = builder.Services.BuildServiceProvider()
         .GetRequiredService<IApiVersionDescriptionProvider>() ?? throw new NullReferenceException();
 
+    var authenticationServerUrl = builder.Configuration["Authentication:AuthenticationServerUrl"];
+    var audience = builder.Configuration["Authentication:Audience"];
+
+    if (string.IsNullOrWhiteSpace(authenticationServerUrl))
+        throw new InvalidOperationException(
+            "Настройка 'Authentication:AuthenticationServerUrl' не задана в конфигурации.");
+    if (string.IsNullOrWhiteSpace(audience))
+        throw new InvalidOperationException("Настройка 'Authentication:Audience' не задана в конфигурации.");
+
     builder.Services.AddSwaggerGen(options =>
     {
         foreach (var description in provider.ApiVersionDescriptions)
@@ -91,50 +102,147 @@ try
                 Description = "API для работы со счетами"
             });
 
-        options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+
+        options.CustomSchemaIds(id => id.FullName!.Replace('+', '-'));
+
+        options.AddSecurityDefinition("Keycloak", new OpenApiSecurityScheme
         {
-            Description = "Заголовок авторизации с использованием схемы Bearer. Пример: \"Bearer {token}\"",
-            Name = "Authorization",
-            In = ParameterLocation.Header,
-            Type = SecuritySchemeType.ApiKey,
-            Scheme = "Bearer"
+            Type = SecuritySchemeType.OAuth2,
+            Flows = new OpenApiOAuthFlows
+            {
+                Implicit = new OpenApiOAuthFlow
+                {
+                    AuthorizationUrl =
+                        new Uri($"{authenticationServerUrl}/realms/modulbank/protocol/openid-connect/auth"),
+                    Scopes = new Dictionary<string, string> { { "openid", "openid" }, { "profile", "profile" } }
+                }
+            }
         });
 
-        options.AddSecurityRequirement(new OpenApiSecurityRequirement
+        var securityRequirement = new OpenApiSecurityRequirement
         {
             {
                 new OpenApiSecurityScheme
                 {
-                    Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
+                    Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Keycloak" },
+                    In = ParameterLocation.Header,
+                    Name = "Bearer",
+                    Scheme = "Bearer"
                 },
                 []
             }
-        });
+        };
 
+        options.AddSecurityRequirement(securityRequirement);
         options.EnableAnnotations();
     });
-
-
-    var authenticationServerUrl = builder.Configuration["Authentication:AuthenticationServerUrl"];
-    var audience = builder.Configuration["Authentication:Audience"];
-
-    if (string.IsNullOrWhiteSpace(authenticationServerUrl))
-        throw new InvalidOperationException(
-            "Настройка 'Authentication:AuthenticationServerUrl' не задана в конфигурации.");
-    if (string.IsNullOrWhiteSpace(audience))
-        throw new InvalidOperationException("Настройка 'Authentication:Audience' не задана в конфигурации.");
 
     builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         .AddJwtBearer(options =>
         {
-            options.Authority = authenticationServerUrl;
-            options.Audience = audience;
-            options.RequireHttpsMetadata = false;
+            options.Authority = "http://localhost:8080/realms/modulbank";
+        options.Audience = "account";
+        options.RequireHttpsMetadata = false;
+
+            options.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidateIssuerSigningKey = true,
+                ValidateLifetime = true
+            };
 
             options.Events = new JwtBearerEvents
             {
+                OnMessageReceived = context =>
+                {
+                    var logger = context.HttpContext.RequestServices
+                        .GetRequiredService<ILoggerFactory>()
+                        .CreateLogger("JwtBearer");
+                    logger.LogDebug("OnMessageReceived: Token = {Token}", context.Token ?? "(null)");
+                    return Task.CompletedTask;
+                },
+
+                OnTokenValidated = context =>
+                {
+                    var logger = context.HttpContext.RequestServices
+                        .GetRequiredService<ILoggerFactory>()
+                        .CreateLogger("JwtBearer");
+                    logger.LogInformation("OnTokenValidated: User {User}",
+                        context.Principal.Identity?.Name ?? "(anonymous)");
+                    return Task.CompletedTask;
+                },
+
+                OnAuthenticationFailed = context =>
+                {
+                    var logger = context.HttpContext.RequestServices
+                        .GetRequiredService<ILoggerFactory>()
+                        .CreateLogger("JwtBearer");
+
+                    logger.LogError(context.Exception, "OnAuthenticationFailed: Ошибка аутентификации");
+
+                    // Лог токена
+                    if (!string.IsNullOrEmpty(context.Request.Headers.Authorization))
+                    {
+                        var token = context.Request.Headers.Authorization.ToString().Replace("Bearer ", "");
+                        logger.LogWarning("Получен токен: {Token}", token);
+
+                        try
+                        {
+                            // Попробуем распарсить JWT без валидации
+                            var handler = new JwtSecurityTokenHandler();
+                            if (handler.CanReadToken(token))
+                            {
+                                var jwt = handler.ReadJwtToken(token);
+
+                                logger.LogInformation("Parsed JWT Claims:");
+                                foreach (var claim in jwt.Claims)
+                                    logger.LogInformation("  {Type}: {Value}", claim.Type, claim.Value);
+
+                                logger.LogInformation("JWT Header:");
+                                foreach (var kvp in jwt.Header)
+                                    logger.LogInformation("  {Key}: {Value}", kvp.Key, kvp.Value);
+
+                                logger.LogInformation("JWT Issuer: {Issuer}", jwt.Issuer);
+                                logger.LogInformation("JWT Audience: {Audience}", string.Join(", ", jwt.Audiences));
+                                logger.LogInformation("JWT ValidFrom: {ValidFrom}", jwt.ValidFrom);
+                                logger.LogInformation("JWT ValidTo: {ValidTo}", jwt.ValidTo);
+                            }
+                            else
+                            {
+                                logger.LogWarning("Не удалось прочитать токен JWT");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            logger.LogError(ex, "Ошибка при разборе JWT токена вручную");
+                        }
+                    }
+                    else
+                    {
+                        logger.LogWarning("Заголовок Authorization отсутствует или пуст");
+                    }
+
+                    // Лог текущих настроек
+                    var options = context.Options;
+                    logger.LogInformation("JWT Settings:");
+                    logger.LogInformation("  Authority: {Authority}", options.Authority);
+                    logger.LogInformation("  Audience: {Audience}", options.Audience);
+                    logger.LogInformation("  MetadataAddress: {MetadataAddress}", options.MetadataAddress);
+                    logger.LogInformation("  RequireHttpsMetadata: {RequireHttpsMetadata}",
+                        options.RequireHttpsMetadata);
+
+                    return Task.CompletedTask;
+                },
+
                 OnChallenge = async context =>
                 {
+                    var logger = context.HttpContext.RequestServices
+                        .GetRequiredService<ILoggerFactory>()
+                        .CreateLogger("JwtBearer");
+                    logger.LogWarning("OnChallenge: Аутентификация не прошла, статус {StatusCode}",
+                        context.Response.StatusCode);
+
                     context.HandleResponse();
 
                     var result = ApiResult.Unauthorized("Требуется аутентификация");
@@ -164,6 +272,15 @@ try
                     $"Account API {description.GroupName.ToUpperInvariant()}");
 
             options.RoutePrefix = string.Empty;
+
+            options.OAuthClientId("account-service");
+            options.OAuth2RedirectUrl("http://localhost:80/oauth2-redirect.html");
+            options.OAuthAppName("Account Service API");
+
+            options.OAuthUsePkce();
+
+            options.OAuthScopeSeparator(" ");
+            options.OAuthScopes("openid profile");
         });
     }
 
