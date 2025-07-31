@@ -1,3 +1,4 @@
+using AccountService.Common.Models;
 using Asp.Versioning.ApiExplorer;
 using Microsoft.OpenApi.Models;
 
@@ -7,11 +8,9 @@ public static class SwaggerExtensions
 {
     public static IServiceCollection AddCustomSwagger(this IServiceCollection services, IConfiguration configuration)
     {
-        var provider = services.BuildServiceProvider()
-            .GetRequiredService<IApiVersionDescriptionProvider>();
-
-        var authenticationServerUrl = configuration["Authentication:AuthenticationServerUrl"];
-        var realm = configuration["Authentication:Realm"] ?? "modulbank";
+        var provider = services.BuildServiceProvider().GetRequiredService<IApiVersionDescriptionProvider>();
+        var authSettings = services.BuildServiceProvider().GetRequiredService<AuthenticationSettings>();
+        var keycloakPort = configuration["KEYCLOAK_PORT"] ?? "8080";
 
         services.AddSwaggerGen(options =>
         {
@@ -27,33 +26,29 @@ public static class SwaggerExtensions
 
             options.AddSecurityDefinition("Keycloak", new OpenApiSecurityScheme
             {
+                Name = "Keycloak",
+                Description = "Client ID: account-service",
                 Type = SecuritySchemeType.OAuth2,
                 Flows = new OpenApiOAuthFlows
                 {
                     Implicit = new OpenApiOAuthFlow
                     {
-                        AuthorizationUrl =
-                            new Uri($"{authenticationServerUrl}/realms/{realm}/protocol/openid-connect/auth"),
+                        AuthorizationUrl = new Uri($"http://localhost:{keycloakPort}/realms/{authSettings.Realm}/protocol/openid-connect/auth"),
                         Scopes = new Dictionary<string, string> { { "openid", "openid" }, { "profile", "profile" } }
                     }
                 }
             });
 
-            var securityRequirement = new OpenApiSecurityRequirement
+            options.AddSecurityRequirement(new OpenApiSecurityRequirement
             {
                 {
                     new OpenApiSecurityScheme
                     {
-                        Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Keycloak" },
-                        In = ParameterLocation.Header,
-                        Name = "Bearer",
-                        Scheme = "Bearer"
+                        Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Keycloak" }
                     },
                     []
                 }
-            };
-
-            options.AddSecurityRequirement(securityRequirement);
+            });
             options.EnableAnnotations();
         });
 
@@ -77,9 +72,8 @@ public static class SwaggerExtensions
             options.RoutePrefix = string.Empty;
             options.OAuthClientId("account-service");
 
-            var baseUrl = configuration["urls"] ?? $"http://localhost:{configuration["ACCOUNT_SERVICE_PORT"] ?? "80"}";
-            options.OAuth2RedirectUrl($"{baseUrl}/oauth2-redirect.html");
-            options.OAuthAppName("Account Service API");
+            options.OAuth2RedirectUrl("/oauth2-redirect.html");
+            options.OAuthAppName("Account Service API (Client ID: account-service)");
             options.OAuthUsePkce();
             options.OAuthScopeSeparator(" ");
             options.OAuthScopes("openid profile");

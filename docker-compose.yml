@@ -37,4 +37,6 @@ services:
       - Authentication__AuthenticationServerUrl=${AUTHENTICATION_SERVER_URL}
       - Authentication__Audience=${AUDIENCE}
       - Authentication__Realm=${REALM}
+      - Authentication__AdminUsername=${KEYCLOAK_ADMIN}
+      - Authentication__AdminPassword=${KEYCLOAK_ADMIN_PASSWORD}
     restart: unless-stopped

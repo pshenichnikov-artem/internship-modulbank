@@ -18,7 +18,7 @@ public static class DependencyInjection
         services.AddScoped<IAccountRepository, AccountRepository>();
         services.AddScoped<ITransactionRepository, TransactionRepository>();
 
-        services.AddSingleton<IClientService, ClientService>();
+        services.AddHttpClient<IClientService, ClientService>();
         services.AddSingleton<ICurrencyService, CurrencyService>();
         services.AddScoped<IAccountService, Features.Accounts.AccountService>();
         services.AddScoped<ITransactionService, TransactionService>();
