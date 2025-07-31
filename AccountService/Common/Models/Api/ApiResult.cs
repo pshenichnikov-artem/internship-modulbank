@@ -32,7 +32,12 @@ public static class ApiResult
 
     public static ObjectResult Forbidden(string message)
     {
-        return new ConflictObjectResult(new ErrorResponse(403, message));
+        return new ObjectResult(new ErrorResponse(403, message));
+    }
+
+    public static ObjectResult Unauthorized(string message)
+    {
+        return new UnauthorizedObjectResult(new ErrorResponse(401, message));
     }
 
     public static ObjectResult Problem(string message, Dictionary<string, string>? details = null)
@@ -65,6 +70,7 @@ public static class ApiResult
             200 => Ok(message),
             201 => Created(string.Empty, message),
             400 => BadRequest(message, details),
+            401 => Unauthorized(message),
             404 => NotFound(message),
             403 => Forbidden(message),
             409 => Conflict(message),

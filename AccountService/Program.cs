@@ -1,3 +1,4 @@
+using System.Text.Json;
 using AccountService.Common.Behaviors;
 using AccountService.Common.Filters;
 using AccountService.Common.Middleware;
@@ -9,6 +10,7 @@ using Asp.Versioning;
 using Asp.Versioning.ApiExplorer;
 using FluentValidation;
 using MediatR;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.OpenApi.Models;
 using Serilog;
@@ -89,8 +91,63 @@ try
                 Description = "API для работы со счетами"
             });
 
+        options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+        {
+            Description = "Заголовок авторизации с использованием схемы Bearer. Пример: \"Bearer {token}\"",
+            Name = "Authorization",
+            In = ParameterLocation.Header,
+            Type = SecuritySchemeType.ApiKey,
+            Scheme = "Bearer"
+        });
+
+        options.AddSecurityRequirement(new OpenApiSecurityRequirement
+        {
+            {
+                new OpenApiSecurityScheme
+                {
+                    Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
+                },
+                []
+            }
+        });
+
         options.EnableAnnotations();
     });
+
+
+    var authenticationServerUrl = builder.Configuration["Authentication:AuthenticationServerUrl"];
+    var audience = builder.Configuration["Authentication:Audience"];
+
+    if (string.IsNullOrWhiteSpace(authenticationServerUrl))
+        throw new InvalidOperationException(
+            "Настройка 'Authentication:AuthenticationServerUrl' не задана в конфигурации.");
+    if (string.IsNullOrWhiteSpace(audience))
+        throw new InvalidOperationException("Настройка 'Authentication:Audience' не задана в конфигурации.");
+
+    builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+        .AddJwtBearer(options =>
+        {
+            options.Authority = authenticationServerUrl;
+            options.Audience = audience;
+            options.RequireHttpsMetadata = false;
+
+            options.Events = new JwtBearerEvents
+            {
+                OnChallenge = async context =>
+                {
+                    context.HandleResponse();
+
+                    var result = ApiResult.Unauthorized("Требуется аутентификация");
+                    context.Response.StatusCode = 401;
+                    context.Response.ContentType = "application/json";
+
+                    var json = JsonSerializer.Serialize(result.Value);
+                    await context.Response.WriteAsync(json);
+                }
+            };
+        });
+
+    builder.Services.AddAuthorization();
 
     builder.Services.AddInfrastructure();
 
@@ -115,8 +172,6 @@ try
     app.UsePerformanceLogging();
     app.UseGlobalExceptionHandler();
 
-    app.UsePerformanceLogging();
-
     app.UseSerilogRequestLogging(options =>
     {
         options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
@@ -140,6 +195,9 @@ try
 
 
     app.UseRouting();
+
+    app.UseAuthentication();
+    app.UseAuthorization();
 
     app.MapControllers();
 

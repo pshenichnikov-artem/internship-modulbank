@@ -7,12 +7,14 @@ using AccountService.Features.Transactions.Query.GetTransactionById;
 using AccountService.Features.Transactions.Query.GetTransactions;
 using Asp.Versioning;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
 
 namespace AccountService.Features.Transactions;
 
 [ApiController]
+[Authorize]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
 public class TransactionsController(IMediator mediator) : ControllerBase
