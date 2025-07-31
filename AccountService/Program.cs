@@ -147,6 +147,17 @@ try
             };
         });
 
+    builder.Services.AddCors(options =>
+    {
+        options.AddPolicy("AllowAny", policy =>
+        {
+            policy
+                .AllowAnyOrigin()
+                .AllowAnyMethod()
+                .AllowAnyHeader();
+        });
+    });
+
     builder.Services.AddAuthorization();
 
     builder.Services.AddInfrastructure();
@@ -193,6 +204,7 @@ try
         };
     });
 
+    app.UseCors("AllowAny");
 
     app.UseRouting();
 
