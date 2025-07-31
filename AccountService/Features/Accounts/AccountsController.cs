@@ -63,11 +63,17 @@ public class AccountsController(IMediator mediator) : ControllerBase
     [SwaggerResponse(StatusCodes.Status404NotFound, SwaggerMessages.NotFound, typeof(ErrorResponse))]
     [SwaggerResponse(StatusCodes.Status500InternalServerError, SwaggerMessages.InternalError, typeof(ErrorResponse))]
     public async Task<IActionResult> CreateAccount(
-        [FromBody] CreateAccountCommand request,
+        [FromBody] CreateAccountRequest request,
         CancellationToken cancellationToken)
     {
-        request.OwnerId = User.GetUserId();
-        var result = await mediator.Send(request, cancellationToken);
+        var command = new CreateAccountCommand
+        {
+            OwnerId = User.GetUserId(),
+            Currency = request.Currency,
+            Type = request.Type,
+            InterestRate = request.InterestRate
+        };
+        var result = await mediator.Send(command, cancellationToken);
         return ApiResult.FromCommandResult(result, nameof(GetAccount),
             new { id = result.IsSuccess ? result.Data : Guid.Empty });
     }

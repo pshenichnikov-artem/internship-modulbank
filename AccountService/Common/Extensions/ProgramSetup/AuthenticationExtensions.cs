@@ -1,4 +1,5 @@
 using System.Text.Json;
+using AccountService.Common.Models;
 using AccountService.Common.Models.Api;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -10,29 +11,22 @@ public static class AuthenticationExtensions
     public static IServiceCollection AddCustomAuthentication(this IServiceCollection services,
         IConfiguration configuration)
     {
-        var authenticationServerUrl = configuration["Authentication:AuthenticationServerUrl"];
-        var audience = configuration["Authentication:Audience"];
-        var realm = configuration["Authentication:Realm"] ?? "modulbank";
-
-        if (string.IsNullOrWhiteSpace(authenticationServerUrl))
-            throw new InvalidOperationException(
-                "Настройка 'Authentication:AuthenticationServerUrl' не задана в конфигурации.");
-        if (string.IsNullOrWhiteSpace(audience))
-            throw new InvalidOperationException("Настройка 'Authentication:Audience' не задана в конфигурации.");
+        var authSettings = new AuthenticationSettings(configuration);
+        services.AddSingleton(authSettings);
 
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
             {
-                options.Authority = $"{authenticationServerUrl}/realms/{realm}";
-                options.Audience = audience;
+                options.Authority = $"{authSettings.AuthenticationServerUrl}/realms/{authSettings.Realm}";
+                options.Audience = authSettings.Audience;
                 options.RequireHttpsMetadata = false;
 
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuer = true,
-                    ValidIssuer = $"{authenticationServerUrl}/realms/{realm}",
+                    ValidIssuer = $"{authSettings.AuthenticationServerUrl}/realms/{authSettings.Realm}",
                     ValidateAudience = true,
-                    ValidAudience = audience,
+                    ValidAudience = authSettings.Audience,
                     ValidateIssuerSigningKey = true,
                     ValidateLifetime = true
                 };
