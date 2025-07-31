@@ -9,12 +9,14 @@ using AccountService.Features.Accounts.Query.GetAccountById;
 using AccountService.Features.Accounts.Query.GetAccounts;
 using Asp.Versioning;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
 
 namespace AccountService.Features.Accounts;
 
 [ApiController]
+[Authorize]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
 public class AccountsController(IMediator mediator) : ControllerBase
