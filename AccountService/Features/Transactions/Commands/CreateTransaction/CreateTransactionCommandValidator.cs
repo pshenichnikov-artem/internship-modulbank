@@ -3,6 +3,8 @@ using FluentValidation;
 
 namespace AccountService.Features.Transactions.Commands.CreateTransaction;
 
+// ReSharper disable once UnusedMember.Global
+// Класс валидатора используется через механизм автоматической регистрации
 public class CreateTransactionCommandValidator : AbstractValidator<CreateTransactionCommand>
 {
     public CreateTransactionCommandValidator()

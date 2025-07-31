@@ -263,6 +263,7 @@ public class TransactionService(
         {
             TransactionType.Debit => account.Balance + amount,
             TransactionType.Credit => account.Balance - amount,
+            TransactionType.Transfer => throw new ValidationException("Неверный тип транзакции"),
             _ => throw new ValidationException("Неверный тип транзакции")
         };
 

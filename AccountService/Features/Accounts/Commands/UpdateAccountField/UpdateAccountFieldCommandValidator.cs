@@ -4,6 +4,8 @@ using FluentValidation;
 
 namespace AccountService.Features.Accounts.Commands.UpdateAccountField;
 
+// ReSharper disable once UnusedMember.Global
+// Класс валидатора используется через механизм автоматической регистрации
 public class UpdateAccountFieldCommandValidator : AbstractValidator<UpdateAccountFieldCommand>
 {
     private static readonly HashSet<string> AllowedFields = new(StringComparer.OrdinalIgnoreCase)

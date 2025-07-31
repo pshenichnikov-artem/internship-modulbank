@@ -4,6 +4,8 @@ using FluentValidation;
 
 namespace AccountService.Features.Accounts.Query.GetAccountById;
 
+// ReSharper disable once UnusedMember.Global
+// Класс валидатора используется через механизм автоматической регистрации
 public class GetAccountByIdQueryValidator : AbstractValidator<GetAccountByIdQuery>
 {
     private static readonly HashSet<string> AllowedFields = new(StringComparer.OrdinalIgnoreCase)

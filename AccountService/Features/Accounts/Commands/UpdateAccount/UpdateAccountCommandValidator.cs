@@ -3,6 +3,8 @@ using FluentValidation;
 
 namespace AccountService.Features.Accounts.Commands.UpdateAccount;
 
+// ReSharper disable once UnusedMember.Global
+// Класс валидатора используется через механизм автоматической регистрации
 public class UpdateAccountCommandValidator : AbstractValidator<UpdateAccountCommand>
 {
     public UpdateAccountCommandValidator()

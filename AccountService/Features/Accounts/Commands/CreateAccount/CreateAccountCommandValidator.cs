@@ -4,6 +4,8 @@ using FluentValidation;
 
 namespace AccountService.Features.Accounts.Commands.CreateAccount;
 
+// ReSharper disable once UnusedMember.Global
+// Класс валидатора используется через механизм автоматической регистрации
 public class CreateAccountCommandValidator : AbstractValidator<CreateAccountCommand>
 {
     public CreateAccountCommandValidator()

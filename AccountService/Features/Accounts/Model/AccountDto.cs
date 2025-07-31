@@ -1,5 +1,8 @@
 ﻿using Swashbuckle.AspNetCore.Annotations;
 
+// ReSharper disable UnusedMember.Global
+// DTO используется только для сериализации ответа
+
 namespace AccountService.Features.Accounts.Model;
 
 public class AccountDto

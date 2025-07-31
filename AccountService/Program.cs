@@ -18,6 +18,7 @@ using Serilog.Events;
 
 Log.Logger = new LoggerConfiguration()
     .ReadFrom.Configuration(new ConfigurationBuilder()
+        // ReSharper disable once StringLiteralTypo Название файла
         .AddJsonFile("appsettings.json", false, true)
         .Build())
     .CreateLogger();

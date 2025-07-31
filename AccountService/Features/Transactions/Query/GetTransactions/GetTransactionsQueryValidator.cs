@@ -3,6 +3,8 @@ using FluentValidation;
 
 namespace AccountService.Features.Transactions.Query.GetTransactions;
 
+// ReSharper disable once UnusedMember.Global
+// Класс валидатора используется через механизм автоматической регистрации
 public class GetTransactionsQueryValidator : AbstractValidator<GetTransactionsQuery>
 {
     private static readonly HashSet<string> AllowedSortFields = new(StringComparer.OrdinalIgnoreCase)
