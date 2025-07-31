@@ -119,11 +119,11 @@ try
     var authenticationServerUrl = builder.Configuration["Authentication:AuthenticationServerUrl"];
     var audience = builder.Configuration["Authentication:Audience"];
 
-    if (string.IsNullOrWhiteSpace(authenticationServerUrl))
+    /*if (string.IsNullOrWhiteSpace(authenticationServerUrl))
         throw new InvalidOperationException(
             "Настройка 'Authentication:AuthenticationServerUrl' не задана в конфигурации.");
     if (string.IsNullOrWhiteSpace(audience))
-        throw new InvalidOperationException("Настройка 'Authentication:Audience' не задана в конфигурации.");
+        throw new InvalidOperationException("Настройка 'Authentication:Audience' не задана в конфигурации.");*/
 
     builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         .AddJwtBearer(options =>
@@ -138,7 +138,7 @@ try
                 {
                     context.HandleResponse();
 
-                    var result = ApiResult.Unauthorized("Требуется аутентификация");
+                    var result = ApiResult.Unauthorized("Некорректный токен авторизации");
                     context.Response.StatusCode = 401;
                     context.Response.ContentType = "application/json";
 

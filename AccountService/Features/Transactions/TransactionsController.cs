@@ -1,4 +1,6 @@
-﻿using AccountService.Common.Models.Api;
+﻿using AccountService.Common.Constants;
+using AccountService.Common.Extensions;
+using AccountService.Common.Models.Api;
 using AccountService.Features.Transactions.Commands.CancelTransaction;
 using AccountService.Features.Transactions.Commands.CreateTransaction;
 using AccountService.Features.Transactions.Commands.UpdateTransaction;
@@ -19,16 +21,14 @@ namespace AccountService.Features.Transactions;
 [Route("api/v{version:apiVersion}/[controller]")]
 public class TransactionsController(IMediator mediator) : ControllerBase
 {
-    private static Guid GetCurrentUserId()
-    {
-        return Guid.Parse("8d2f5a44-77d7-4e91-9b52-353f7fbeef04");
-    }
-
     [HttpPost("search")]
     [SwaggerOperation(Summary = "Получить список транзакций",
         Description = "Позволяет фильтровать и сортировать транзакции по счетам, датам, типам и т.д.")]
-    [SwaggerResponse(StatusCodes.Status200OK, "Список транзакций", typeof(IEnumerable<TransactionDto>))]
-    [SwaggerResponse(StatusCodes.Status400BadRequest, "Ошибка запроса", typeof(ErrorResponse))]
+    [SwaggerResponse(StatusCodes.Status200OK, "Список транзакций",
+        typeof(SuccessResponse<IEnumerable<TransactionDto>>))]
+    [SwaggerResponse(StatusCodes.Status400BadRequest, SwaggerMessages.ValidationError, typeof(ErrorResponse))]
+    [SwaggerResponse(StatusCodes.Status401Unauthorized, SwaggerMessages.Unauthorized, typeof(ErrorResponse))]
+    [SwaggerResponse(StatusCodes.Status500InternalServerError, SwaggerMessages.InternalError, typeof(ErrorResponse))]
     public async Task<IActionResult> GetTransactions(
         [FromBody] GetTransactionsQuery query,
         CancellationToken cancellationToken)
@@ -39,9 +39,11 @@ public class TransactionsController(IMediator mediator) : ControllerBase
 
     [HttpGet("{id:guid}")]
     [SwaggerOperation(Summary = "Получить транзакцию по ID")]
-    [SwaggerResponse(StatusCodes.Status200OK, "Транзакция найдена", typeof(TransactionDto))]
-    [SwaggerResponse(StatusCodes.Status404NotFound, "Транзакция не найдена", typeof(ErrorResponse))]
-    [SwaggerResponse(StatusCodes.Status400BadRequest, "Неверный ID", typeof(ErrorResponse))]
+    [SwaggerResponse(StatusCodes.Status200OK, "Транзакция найдена", typeof(SuccessResponse<TransactionDto>))]
+    [SwaggerResponse(StatusCodes.Status400BadRequest, SwaggerMessages.ValidationError, typeof(ErrorResponse))]
+    [SwaggerResponse(StatusCodes.Status401Unauthorized, SwaggerMessages.Unauthorized, typeof(ErrorResponse))]
+    [SwaggerResponse(StatusCodes.Status404NotFound, SwaggerMessages.NotFound, typeof(ErrorResponse))]
+    [SwaggerResponse(StatusCodes.Status500InternalServerError, SwaggerMessages.InternalError, typeof(ErrorResponse))]
     public async Task<IActionResult> GetTransaction(
         [FromRoute] Guid id,
         CancellationToken cancellationToken,
@@ -55,25 +57,29 @@ public class TransactionsController(IMediator mediator) : ControllerBase
 
     [HttpPost]
     [SwaggerOperation(Summary = "Создать новую транзакцию")]
-    [SwaggerResponse(StatusCodes.Status201Created, "Транзакция создана", typeof(TransactionDto))]
-    [SwaggerResponse(StatusCodes.Status400BadRequest, "Ошибка валидации", typeof(ErrorResponse))]
-    [SwaggerResponse(StatusCodes.Status404NotFound, "Счет не найден")]
-    [SwaggerResponse(StatusCodes.Status403Forbidden, "Недостаточно прав")]
+    [SwaggerResponse(StatusCodes.Status201Created, "Транзакция создана", typeof(SuccessResponse<Guid>))]
+    [SwaggerResponse(StatusCodes.Status400BadRequest, SwaggerMessages.ValidationError, typeof(ErrorResponse))]
+    [SwaggerResponse(StatusCodes.Status401Unauthorized, SwaggerMessages.Unauthorized, typeof(ErrorResponse))]
+    [SwaggerResponse(StatusCodes.Status403Forbidden, SwaggerMessages.Forbidden, typeof(ErrorResponse))]
+    [SwaggerResponse(StatusCodes.Status404NotFound, SwaggerMessages.NotFound, typeof(ErrorResponse))]
+    [SwaggerResponse(StatusCodes.Status500InternalServerError, SwaggerMessages.InternalError, typeof(ErrorResponse))]
     public async Task<IActionResult> CreateTransaction(
         [FromBody] CreateTransactionCommand request,
         CancellationToken cancellationToken)
     {
-        request.OwnerId = GetCurrentUserId();
+        request.OwnerId = User.GetUserId();
         var result = await mediator.Send(request, cancellationToken);
         return ApiResult.FromCommandResult(result, nameof(GetTransaction), new { id = result.Data });
     }
 
     [HttpPut("{id:guid}")]
     [SwaggerOperation(Summary = "Обновить описание существующей транзакции")]
-    [SwaggerResponse(StatusCodes.Status200OK, "Обновление выполнено", typeof(TransactionDto))]
-    [SwaggerResponse(StatusCodes.Status400BadRequest, "Ошибка валидации", typeof(ErrorResponse))]
-    [SwaggerResponse(StatusCodes.Status403Forbidden, "Недостаточно прав")]
-    [SwaggerResponse(StatusCodes.Status404NotFound, "Транзакция не найдена")]
+    [SwaggerResponse(StatusCodes.Status200OK, "Обновление выполнено", typeof(SuccessResponse))]
+    [SwaggerResponse(StatusCodes.Status400BadRequest, SwaggerMessages.ValidationError, typeof(ErrorResponse))]
+    [SwaggerResponse(StatusCodes.Status401Unauthorized, SwaggerMessages.Unauthorized, typeof(ErrorResponse))]
+    [SwaggerResponse(StatusCodes.Status403Forbidden, SwaggerMessages.Forbidden, typeof(ErrorResponse))]
+    [SwaggerResponse(StatusCodes.Status404NotFound, SwaggerMessages.NotFound, typeof(ErrorResponse))]
+    [SwaggerResponse(StatusCodes.Status500InternalServerError, SwaggerMessages.InternalError, typeof(ErrorResponse))]
     public async Task<IActionResult> UpdateTransaction(
         [FromRoute] Guid id,
         [FromBody] string description,
@@ -83,7 +89,7 @@ public class TransactionsController(IMediator mediator) : ControllerBase
         {
             Id = id,
             Description = description,
-            OwnerId = GetCurrentUserId()
+            OwnerId = User.GetUserId()
         };
         var result = await mediator.Send(command, cancellationToken);
         return ApiResult.FromCommandResult(result);
@@ -93,17 +99,18 @@ public class TransactionsController(IMediator mediator) : ControllerBase
     [SwaggerOperation(Summary = "Отменить транзакцию",
         Description =
             "Отменяет транзакцию и корректирует баланс счета. Для Checking и Deposit счетов баланс не может стать отрицательным.")]
-    [SwaggerResponse(StatusCodes.Status200OK, "Транзакция отменена")]
-    [SwaggerResponse(StatusCodes.Status400BadRequest, "Ошибка валидации или недостаточно средств",
-        typeof(ErrorResponse))]
-    [SwaggerResponse(StatusCodes.Status403Forbidden, "Недостаточно прав")]
-    [SwaggerResponse(StatusCodes.Status404NotFound, "Транзакция не найдена")]
+    [SwaggerResponse(StatusCodes.Status200OK, "Транзакция отменена", typeof(SuccessResponse))]
+    [SwaggerResponse(StatusCodes.Status400BadRequest, SwaggerMessages.ValidationError, typeof(ErrorResponse))]
+    [SwaggerResponse(StatusCodes.Status401Unauthorized, SwaggerMessages.Unauthorized, typeof(ErrorResponse))]
+    [SwaggerResponse(StatusCodes.Status403Forbidden, SwaggerMessages.Forbidden, typeof(ErrorResponse))]
+    [SwaggerResponse(StatusCodes.Status404NotFound, SwaggerMessages.NotFound, typeof(ErrorResponse))]
+    [SwaggerResponse(StatusCodes.Status500InternalServerError, SwaggerMessages.InternalError, typeof(ErrorResponse))]
     public async Task<IActionResult> CancelTransaction([FromRoute] Guid id, CancellationToken cancellationToken)
     {
         var command = new CancelTransactionCommand
         {
             TransactionId = id,
-            OwnerId = GetCurrentUserId()
+            OwnerId = User.GetUserId()
         };
 
         var result = await mediator.Send(command, cancellationToken);

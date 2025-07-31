@@ -1,4 +1,6 @@
 ﻿using System.Text.Json;
+using AccountService.Common.Constants;
+using AccountService.Common.Extensions;
 using AccountService.Common.Models.Api;
 using AccountService.Features.Accounts.Commands.CreateAccount;
 using AccountService.Features.Accounts.Commands.DeleteAccount;
@@ -21,16 +23,13 @@ namespace AccountService.Features.Accounts;
 [Route("api/v{version:apiVersion}/[controller]")]
 public class AccountsController(IMediator mediator) : ControllerBase
 {
-    private static Guid GetCurrentUserId()
-    {
-        return Guid.Parse("8d2f5a44-77d7-4e91-9b52-353f7fbeef04");
-    }
-
     [HttpPost("search")]
     [SwaggerOperation(Summary = "Получить список счетов",
         Description = "Позволяет фильтровать и сортировать счета по владельцам, валютам, типам и статусу")]
-    [SwaggerResponse(StatusCodes.Status200OK, "Список счетов", typeof(IEnumerable<AccountDto>))]
-    [SwaggerResponse(StatusCodes.Status400BadRequest, "Ошибка запроса", typeof(ErrorResponse))]
+    [SwaggerResponse(StatusCodes.Status200OK, "Список счетов", typeof(SuccessResponse<IEnumerable<AccountDto>>))]
+    [SwaggerResponse(StatusCodes.Status400BadRequest, SwaggerMessages.ValidationError, typeof(ErrorResponse))]
+    [SwaggerResponse(StatusCodes.Status401Unauthorized, SwaggerMessages.Unauthorized, typeof(ErrorResponse))]
+    [SwaggerResponse(StatusCodes.Status500InternalServerError, SwaggerMessages.InternalError, typeof(ErrorResponse))]
     public async Task<IActionResult> GetAccounts(
         GetAccountsQuery query,
         CancellationToken cancellationToken)
@@ -41,9 +40,11 @@ public class AccountsController(IMediator mediator) : ControllerBase
 
     [HttpGet("{id:guid}")]
     [SwaggerOperation(Summary = "Получить счет по ID")]
-    [SwaggerResponse(StatusCodes.Status200OK, "Счет найден", typeof(AccountDto))]
-    [SwaggerResponse(StatusCodes.Status404NotFound, "Счет не найден")]
-    [SwaggerResponse(StatusCodes.Status400BadRequest, "Ошибка валидации")]
+    [SwaggerResponse(StatusCodes.Status200OK, "Счет найден", typeof(SuccessResponse<AccountDto>))]
+    [SwaggerResponse(StatusCodes.Status400BadRequest, SwaggerMessages.ValidationError, typeof(ErrorResponse))]
+    [SwaggerResponse(StatusCodes.Status401Unauthorized, SwaggerMessages.Unauthorized, typeof(ErrorResponse))]
+    [SwaggerResponse(StatusCodes.Status404NotFound, SwaggerMessages.NotFound, typeof(ErrorResponse))]
+    [SwaggerResponse(StatusCodes.Status500InternalServerError, SwaggerMessages.InternalError, typeof(ErrorResponse))]
     public async Task<IActionResult> GetAccount(
         [FromRoute] Guid id,
         [FromQuery] List<string>? fields = null,
@@ -56,14 +57,16 @@ public class AccountsController(IMediator mediator) : ControllerBase
 
     [HttpPost]
     [SwaggerOperation(Summary = "Создать новый счет")]
-    [SwaggerResponse(StatusCodes.Status201Created, "Счет создан", typeof(AccountDto))]
-    [SwaggerResponse(StatusCodes.Status400BadRequest, "Ошибка валидации")]
-    [SwaggerResponse(StatusCodes.Status404NotFound, "Клиент не найден")]
+    [SwaggerResponse(StatusCodes.Status201Created, "Счет создан", typeof(SuccessResponse<Guid>))]
+    [SwaggerResponse(StatusCodes.Status400BadRequest, SwaggerMessages.ValidationError, typeof(ErrorResponse))]
+    [SwaggerResponse(StatusCodes.Status401Unauthorized, SwaggerMessages.Unauthorized, typeof(ErrorResponse))]
+    [SwaggerResponse(StatusCodes.Status404NotFound, SwaggerMessages.NotFound, typeof(ErrorResponse))]
+    [SwaggerResponse(StatusCodes.Status500InternalServerError, SwaggerMessages.InternalError, typeof(ErrorResponse))]
     public async Task<IActionResult> CreateAccount(
         [FromBody] CreateAccountCommand request,
         CancellationToken cancellationToken)
     {
-        request.OwnerId = GetCurrentUserId();
+        request.OwnerId = User.GetUserId();
         var result = await mediator.Send(request, cancellationToken);
         return ApiResult.FromCommandResult(result, nameof(GetAccount),
             new { id = result.IsSuccess ? result.Data : Guid.Empty });
@@ -71,10 +74,12 @@ public class AccountsController(IMediator mediator) : ControllerBase
 
     [HttpPut("{id:guid}")]
     [SwaggerOperation(Summary = "Обновить существующий счет")]
-    [SwaggerResponse(StatusCodes.Status200OK, "Обновление выполнено", typeof(AccountDto))]
-    [SwaggerResponse(StatusCodes.Status400BadRequest, "Ошибка валидации")]
-    [SwaggerResponse(StatusCodes.Status403Forbidden, "Недостаточно прав")]
-    [SwaggerResponse(StatusCodes.Status404NotFound, "Счет не найден")]
+    [SwaggerResponse(StatusCodes.Status200OK, "Обновление выполнено", typeof(SuccessResponse))]
+    [SwaggerResponse(StatusCodes.Status400BadRequest, SwaggerMessages.ValidationError, typeof(ErrorResponse))]
+    [SwaggerResponse(StatusCodes.Status401Unauthorized, SwaggerMessages.Unauthorized, typeof(ErrorResponse))]
+    [SwaggerResponse(StatusCodes.Status403Forbidden, SwaggerMessages.Forbidden, typeof(ErrorResponse))]
+    [SwaggerResponse(StatusCodes.Status404NotFound, SwaggerMessages.NotFound, typeof(ErrorResponse))]
+    [SwaggerResponse(StatusCodes.Status500InternalServerError, SwaggerMessages.InternalError, typeof(ErrorResponse))]
     public async Task<IActionResult> UpdateAccount(
         [FromRoute] Guid id,
         [FromBody] UpdateAccountRequest request,
@@ -85,7 +90,7 @@ public class AccountsController(IMediator mediator) : ControllerBase
             Id = id,
             Currency = request.Currency,
             InterestRate = request.InterestRate,
-            OwnerId = GetCurrentUserId()
+            OwnerId = User.GetUserId()
         };
         var result = await mediator.Send(command, cancellationToken);
         return ApiResult.FromCommandResult(result);
@@ -97,10 +102,12 @@ public class AccountsController(IMediator mediator) : ControllerBase
         Description =
             "Допустимые поля: 'Currency' — трехбуквенный код валюты, 'InterestRate' — процентная ставка"
     )]
-    [SwaggerResponse(StatusCodes.Status200OK, "Поле обновлено")]
-    [SwaggerResponse(StatusCodes.Status400BadRequest, "Ошибка валидации", typeof(ErrorResponse))]
-    [SwaggerResponse(StatusCodes.Status403Forbidden, "Недостаточно прав")]
-    [SwaggerResponse(StatusCodes.Status404NotFound, "Аккаунт или валюта не найдены")]
+    [SwaggerResponse(StatusCodes.Status200OK, "Поле обновлено", typeof(SuccessResponse))]
+    [SwaggerResponse(StatusCodes.Status400BadRequest, SwaggerMessages.ValidationError, typeof(ErrorResponse))]
+    [SwaggerResponse(StatusCodes.Status401Unauthorized, SwaggerMessages.Unauthorized, typeof(ErrorResponse))]
+    [SwaggerResponse(StatusCodes.Status403Forbidden, SwaggerMessages.Forbidden, typeof(ErrorResponse))]
+    [SwaggerResponse(StatusCodes.Status404NotFound, SwaggerMessages.NotFound, typeof(ErrorResponse))]
+    [SwaggerResponse(StatusCodes.Status500InternalServerError, SwaggerMessages.InternalError, typeof(ErrorResponse))]
     public async Task<IActionResult> UpdateAccountField(
         [FromRoute] Guid id,
         [FromRoute] string fieldName,
@@ -113,6 +120,7 @@ public class AccountsController(IMediator mediator) : ControllerBase
                 ? fieldValue.GetString()?.ToUpperInvariant()
                 : ApiResult.BadRequest($"Неверный формат значения для поля {fieldName}"),
 
+            // ReSharper disable once StringLiteralTypo Слово приведено к нижнему регистру
             "interestrate" => fieldValue.ValueKind == JsonValueKind.Number && fieldValue.TryGetDecimal(out var rate)
                 ? rate
                 : ApiResult.BadRequest($"Неверный формат значения для поля {fieldName}"),
@@ -127,7 +135,7 @@ public class AccountsController(IMediator mediator) : ControllerBase
             Id = id,
             FieldName = fieldName,
             FieldValue = typedValue!,
-            OwnerId = GetCurrentUserId()
+            OwnerId = User.GetUserId()
         };
 
         var result = await mediator.Send(command, cancellationToken);
@@ -137,10 +145,12 @@ public class AccountsController(IMediator mediator) : ControllerBase
     [HttpDelete("{id:guid}")]
     [SwaggerOperation(Summary = "Удалить счет(закрыть)",
         Description = "Удаляет счет, если его баланс равен нулю. Для всех типов счетов баланс должен быть равен нулю.")]
-    [SwaggerResponse(StatusCodes.Status200OK, "Счет успешно удален")]
-    [SwaggerResponse(StatusCodes.Status400BadRequest, "Ошибка валидации или ненулевой баланс", typeof(ErrorResponse))]
-    [SwaggerResponse(StatusCodes.Status403Forbidden, "Недостаточно прав")]
-    [SwaggerResponse(StatusCodes.Status404NotFound, "Аккаунт не найден")]
+    [SwaggerResponse(StatusCodes.Status200OK, "Счет успешно удален", typeof(SuccessResponse))]
+    [SwaggerResponse(StatusCodes.Status400BadRequest, SwaggerMessages.ValidationError, typeof(ErrorResponse))]
+    [SwaggerResponse(StatusCodes.Status401Unauthorized, SwaggerMessages.Unauthorized, typeof(ErrorResponse))]
+    [SwaggerResponse(StatusCodes.Status403Forbidden, SwaggerMessages.Forbidden, typeof(ErrorResponse))]
+    [SwaggerResponse(StatusCodes.Status404NotFound, SwaggerMessages.NotFound, typeof(ErrorResponse))]
+    [SwaggerResponse(StatusCodes.Status500InternalServerError, SwaggerMessages.InternalError, typeof(ErrorResponse))]
     public async Task<IActionResult> DeleteAccount(
         [FromRoute] Guid id,
         CancellationToken cancellationToken)
@@ -148,7 +158,7 @@ public class AccountsController(IMediator mediator) : ControllerBase
         var command = new DeleteAccountCommand
         {
             AccountId = id,
-            OwnerId = GetCurrentUserId()
+            OwnerId = User.GetUserId()
         };
 
         var result = await mediator.Send(command, cancellationToken);

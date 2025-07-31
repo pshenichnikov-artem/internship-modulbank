@@ -10,3 +10,14 @@ public sealed class SuccessResponse : ApiResponse
 
     public object? Data { get; init; }
 }
+
+public sealed class SuccessResponse<T> : ApiResponse
+{
+    public SuccessResponse(T? data)
+    {
+        Success = true;
+        Data = data;
+    }
+
+    public T? Data { get; init; }
+}

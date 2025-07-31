@@ -259,11 +259,11 @@ public class TransactionService(
     {
         var amount = ConvertAmount(tx.Amount, tx.Currency, account.Currency);
 
+        // ReSharper disable once SwitchExpressionHandlesSomeKnownEnumValuesWithExceptionInDefault Требует указать при TransactionType.Transfer, но в этом случае не нужно
         var newBalance = tx.Type switch
         {
             TransactionType.Debit => account.Balance + amount,
             TransactionType.Credit => account.Balance - amount,
-            TransactionType.Transfer => throw new ValidationException("Неверный тип транзакции"),
             _ => throw new ValidationException("Неверный тип транзакции")
         };
 
