@@ -10,15 +10,17 @@ services:
       - KC_HTTP_ENABLED=true
       - KC_LOG_LEVEL=INFO
       - KC_METRICS_ENABLED=false
-      - KEYCLOAK_ADMIN=admin
-      - KEYCLOAK_ADMIN_PASSWORD=admin123
+      - KEYCLOAK_ADMIN=${KEYCLOAK_ADMIN}
+      - KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD}
+      - KC_HOSTNAME_URL=http://localhost:${KEYCLOAK_PORT}
+      - KC_HTTP_ENABLED=true
     volumes:
       - ./realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
     command:
       - start-dev
       - --import-realm
     ports:
-      - "8080:8080"
+      - "${KEYCLOAK_PORT}:8080"
     restart: unless-stopped
 
   account-service:
@@ -27,11 +29,12 @@ services:
       dockerfile: Dockerfile
     container_name: account-service
     ports:
-      - "80:80"
+      - "${ACCOUNT_SERVICE_PORT}:80"
     depends_on:
       - keycloak
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - Authentication__AuthenticationServerUrl=http://localhost:8080
-      - Authentication__Audience=account
+      - Authentication__AuthenticationServerUrl=${AUTHENTICATION_SERVER_URL}
+      - Authentication__Audience=${AUDIENCE}
+      - Authentication__Realm=${REALM}
     restart: unless-stopped

@@ -2,10 +2,10 @@
 
 namespace AccountService.Infrastructure.Services;
 
-public class ClientService : IClientService
+public class ClientService: IClientService
 {
-    public Task<bool> IsClientExistsAsync(Guid clientId, CancellationToken cancellationToken)
+    public async Task<bool> IsClientExistsAsync(Guid clientId, CancellationToken cancellationToken)
     {
-        return Task.FromResult(true);
+        return await Task.FromResult(true);
     }
 }
