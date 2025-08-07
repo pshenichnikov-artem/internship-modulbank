@@ -13,7 +13,7 @@ namespace AccountService.Common.Extensions.ProgramSetup;
 
 public static class ServiceExtensions
 {
-    public static IServiceCollection AddApplicationServices(this IServiceCollection services)
+    public static IServiceCollection AddApplicationServices(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddControllers(options => { options.Filters.Add<ValidationExceptionFilter>(); });
 
@@ -72,7 +72,7 @@ public static class ServiceExtensions
             });
         });
 
-        services.AddInfrastructure();
+        services.AddInfrastructure(configuration);
         return services;
     }
 }

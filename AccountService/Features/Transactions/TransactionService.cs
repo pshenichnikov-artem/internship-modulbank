@@ -6,6 +6,7 @@ using AccountService.Features.Transactions.Commands.CreateTransaction;
 using AccountService.Features.Transactions.Models;
 using AutoMapper;
 using FluentValidation;
+using Npgsql;
 
 namespace AccountService.Features.Transactions;
 
@@ -64,6 +65,12 @@ public class TransactionService(
             await accountRepository.CommitAsync(cancellationToken);
 
             return CommandResult<Guid>.Success(transaction.Id);
+        }
+        catch (PostgresException pgEx) when (pgEx.SqlState == "40001")
+        {
+            logger.LogWarning(pgEx, "Конфликт параллелизма при создании транзакции");
+            await accountRepository.RollbackAsync(cancellationToken);
+            return CommandResult<Guid>.Failure(409, "Конфликт обновления данных. Попробуйте снова.");
         }
         catch (Exception ex)
         {
@@ -131,6 +138,12 @@ public class TransactionService(
             await accountRepository.CommitAsync(cancellationToken);
 
             return CommandResult<object>.Success();
+        }
+        catch (PostgresException pgEx) when (pgEx.SqlState == "40001")
+        {
+            logger.LogWarning(pgEx, "Конфликт параллелизма при создании транзакции");
+            await accountRepository.RollbackAsync(cancellationToken);
+            return CommandResult<object>.Failure(409, "Конфликт обновления данных. Попробуйте снова.");
         }
         catch (Exception ex)
         {

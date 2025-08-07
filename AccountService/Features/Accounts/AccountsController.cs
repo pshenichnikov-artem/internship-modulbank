@@ -30,7 +30,7 @@ public class AccountsController(IMediator mediator) : ControllerBase
     [SwaggerResponse(StatusCodes.Status400BadRequest, SwaggerMessages.ValidationError, typeof(ErrorResponse))]
     [SwaggerResponse(StatusCodes.Status401Unauthorized, SwaggerMessages.Unauthorized, typeof(ErrorResponse))]
     [SwaggerResponse(StatusCodes.Status500InternalServerError, SwaggerMessages.InternalError, typeof(ErrorResponse))]
-    public async Task<IActionResult> GetAccounts(
+    public async Task<IActionResult> PostSearchAccounts(
         GetAccountsQuery query,
         CancellationToken cancellationToken)
     {

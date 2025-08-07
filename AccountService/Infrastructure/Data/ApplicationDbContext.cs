@@ -44,6 +44,10 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(e => e.InterestRate).HasPrecision(5, 2);
 
             entity.HasQueryFilter(e => !e.IsDeleted);
+
+            entity.HasIndex(e => e.OwnerId)
+                .HasDatabaseName("IX_Accounts_OwnerId_Hash")
+                .HasMethod("hash");
         });
 
         modelBuilder.Entity<Transaction>(entity =>
@@ -56,8 +60,17 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                     v => v.ToUpperInvariant(),
                     v => v
                 );
+            entity.Property(b => b.Version)
+                .IsRowVersion();
 
             entity.Property(e => e.Amount).HasPrecision(18, 2);
+
+            entity.HasIndex(e => new { e.AccountId, e.Timestamp })
+                .HasDatabaseName("IX_Transactions_AccountId_Timestamp");
+
+            /*entity.HasIndex(e => e.Timestamp)
+                .HasDatabaseName("IX_Transactions_Timestamp_GiST")
+                .HasMethod("gist");*/
         });
     }
 
