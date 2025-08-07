@@ -26,7 +26,7 @@ public static class HangFireExtensions
         RecurringJob.AddOrUpdate<IAccrueInterestJob>(
             "daily-interest-accrual",
             job => job.ExecuteAsync(),
-            Cron.Daily(2)); // Выполнение в 2:00 каждый день
+            Cron.Daily(5)); // Выполнение в 2:00 каждый день по МСК
 
         return app;
     }

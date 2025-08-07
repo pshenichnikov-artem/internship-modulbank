@@ -11,7 +11,7 @@ public class AccrueInterestJob(IAccountRepository accountRepository, IMediator m
 {
     public async Task ExecuteAsync()
     {
-        Log.Information("Запуск ежедневного начисления процентов");
+        Log.Warning("Запуск ежедневного начисления процентов");
 
         try
         {
@@ -49,7 +49,7 @@ public class AccrueInterestJob(IAccountRepository accountRepository, IMediator m
                 }
             }
 
-            Log.Information("Завершено начисление процентов. Обработано: {ProcessedCount}, ошибок: {ErrorCount}",
+            Log.Warning("Завершено начисление процентов. Обработано: {ProcessedCount}, ошибок: {ErrorCount}",
                 processedCount, errorCount);
         }
         catch (Exception ex)

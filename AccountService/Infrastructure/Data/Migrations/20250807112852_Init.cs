@@ -1,4 +1,5 @@
 ﻿using System;
+using AccountService.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -11,6 +12,7 @@ namespace AccountService.Infrastructure.Data.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.Sql(StoredProcedures.GetAccrueInterestProcedureScript());
             migrationBuilder.CreateTable(
                 name: "Accounts",
                 columns: table => new
@@ -21,9 +23,10 @@ namespace AccountService.Infrastructure.Data.Migrations
                     Currency = table.Column<string>(type: "character varying(3)", maxLength: 3, nullable: false),
                     Balance = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
                     InterestRate = table.Column<decimal>(type: "numeric(5,2)", precision: 5, scale: 2, nullable: true),
-                    OpenedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    ClosedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    IsDeleted = table.Column<bool>(type: "boolean", nullable: false)
+                    OpenedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    ClosedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
+                    IsDeleted = table.Column<bool>(type: "boolean", nullable: false),
+                    LastInterestAccrual = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -41,9 +44,10 @@ namespace AccountService.Infrastructure.Data.Migrations
                     Currency = table.Column<string>(type: "character varying(3)", maxLength: 3, nullable: false),
                     Type = table.Column<int>(type: "integer", nullable: false),
                     Description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
-                    Timestamp = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    Timestamp = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
                     IsCanceled = table.Column<bool>(type: "boolean", nullable: false),
-                    CanceledAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    CanceledAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {

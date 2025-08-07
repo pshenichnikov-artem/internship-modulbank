@@ -33,7 +33,7 @@ namespace AccountService.Infrastructure.Data.Migrations
                         .HasColumnType("numeric(18,2)");
 
                     b.Property<DateTime?>("ClosedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("Currency")
                         .IsRequired()
@@ -47,8 +47,11 @@ namespace AccountService.Infrastructure.Data.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
+                    b.Property<DateTime?>("LastInterestAccrual")
+                        .HasColumnType("timestamp without time zone");
+
                     b.Property<DateTime>("OpenedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<Guid>("OwnerId")
                         .HasColumnType("uuid");
@@ -80,7 +83,7 @@ namespace AccountService.Infrastructure.Data.Migrations
                         .HasColumnType("numeric(18,2)");
 
                     b.Property<DateTime?>("CanceledAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<Guid?>("CounterpartyAccountId")
                         .HasColumnType("uuid");
@@ -99,7 +102,7 @@ namespace AccountService.Infrastructure.Data.Migrations
                         .HasColumnType("boolean");
 
                     b.Property<DateTime>("Timestamp")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<int>("Type")
                         .HasColumnType("integer");

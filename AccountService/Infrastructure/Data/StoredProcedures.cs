@@ -11,44 +11,55 @@ public static class StoredProcedures
                    account_record RECORD;
                    interest_amount DECIMAL(18,2);
                    days_passed INTEGER;
+                   daily_rate NUMERIC;
                BEGIN
-                   -- Получаем информацию о счёте
+                   -- Получаем счёт
                    SELECT * INTO account_record 
                    FROM "Accounts" 
                    WHERE "Id" = account_id 
-                     AND "Type" = 1 -- Deposit account
-                     AND "IsDeleted" = false;
+                     AND "Type" = 1 -- Deposit
+                     AND "IsDeleted" = false
+                     AND "ClosedAt" IS NULL;
 
                    IF NOT FOUND THEN
-                       RAISE EXCEPTION 'Депозитный счёт с ID % не найден', account_id;
+                       RAISE EXCEPTION 'Счёт % не найден', account_id;
                    END IF;
 
-                   -- Проверка ставки
-                   IF account_record."InterestRate" IS NULL OR account_record."InterestRate" <= 0 THEN
-                       RAISE EXCEPTION 'У счёта % отсутствует или некорректная процентная ставка', account_id;
-                   END IF;
-
-                   -- Количество дней
-                   days_passed := (NOW()::DATE - account_record."CreatedAt"::DATE);
-
-                   IF days_passed <= 0 THEN
+                   IF account_record."Balance" <= 0 THEN
                        RETURN;
                    END IF;
 
+                   IF account_record."InterestRate" IS NULL OR account_record."InterestRate" <= 0 THEN
+                       RAISE EXCEPTION 'У счёта % нет процентной ставки', account_id;
+                   END IF;
+
+                   -- Кол-во дней с момента открытия
+                   days_passed := CASE 
+                   WHEN account_record."LastInterestAccrual" IS NULL 
+                   THEN (NOW()::DATE - account_record."OpenedAt"::DATE)
+                   ELSE (NOW()::DATE - account_record."LastInterestAccrual"::DATE)
+                    END;
+                   
+                   IF days_passed <= 0 THEN
+                       RETURN;
+                   END IF;
+                    
+                   
                    -- Расчёт процентов
-                   interest_amount := account_record."Balance" * (account_record."InterestRate" / 100) * (days_passed / 365.0);
+                   daily_rate := account_record."InterestRate" / 100 / 365;
+                   interest_amount := account_record."Balance" * POWER(1 + daily_rate, days_passed) - account_record."Balance";
+                   interest_amount := ROUND(interest_amount, 2);
 
                    IF interest_amount > 0 THEN
-                       -- Обновление баланса
                        UPDATE "Accounts" 
-                       SET "Balance" = "Balance" + interest_amount,
-                           "UpdatedAt" = NOW()
+                       SET 
+                           "Balance" = "Balance" + interest_amount,
+                           "LastInterestAccrual" = NOW()
                        WHERE "Id" = account_id;
 
-                       -- Создание транзакции
                        INSERT INTO "Transactions" (
                            "Id", "AccountId", "Amount", "Currency", "Type", 
-                           "Description", "Date", "IsCanceled", "CanceledAt"
+                           "Description", "Timestamp", "IsCanceled"
                        ) VALUES (
                            gen_random_uuid(),
                            account_id,
@@ -57,8 +68,7 @@ public static class StoredProcedures
                            0, -- Credit
                            'Начисление процентов по депозиту',
                            NOW(),
-                           false,
-                           NULL
+                           false
                        );
                    END IF;
                END;
