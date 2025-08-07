@@ -33,7 +33,9 @@ public static class SwaggerExtensions
                 {
                     Implicit = new OpenApiOAuthFlow
                     {
-                        AuthorizationUrl = new Uri($"http://localhost:{keycloakPort}/realms/{authSettings.Realm}/protocol/openid-connect/auth"),
+                        AuthorizationUrl =
+                            new Uri(
+                                $"http://localhost:{keycloakPort}/realms/{authSettings.Realm}/protocol/openid-connect/auth"),
                         Scopes = new Dictionary<string, string> { { "openid", "openid" }, { "profile", "profile" } }
                     }
                 }
