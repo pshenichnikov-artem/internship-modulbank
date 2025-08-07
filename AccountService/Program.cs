@@ -21,6 +21,7 @@ try
     builder.Services.AddApplicationServices(builder.Configuration);
     builder.Services.AddCustomAuthentication(builder.Configuration);
     builder.Services.AddCustomSwagger(builder.Configuration);
+    builder.Services.AddHangFire(builder.Configuration);
 
     var app = builder.Build();
 
@@ -32,6 +33,7 @@ try
 
     app.UseCustomSwagger(builder.Configuration);
     app.UseCustomMiddleware();
+    app.UseHangFire();
 
     app.Run();
 }

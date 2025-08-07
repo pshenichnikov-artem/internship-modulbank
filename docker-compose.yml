@@ -70,7 +70,7 @@ services:
       - Authentication__Realm=${REALM}
       - Authentication__AdminUsername=${KEYCLOAK_ADMIN}
       - Authentication__AdminPassword=${KEYCLOAK_ADMIN_PASSWORD}
-      - ConnectionStrings__DefaultConnection=Host=postgres;Database=${ACCOUNT_DB};Username=${ACCOUNT_DB_USER};Password=${ACCOUNT_DB_PASSWORD}
+      - ConnectionStrings__DefaultConnection=Host=account-db;Database=${ACCOUNT_DB};Username=${ACCOUNT_DB_USER};Password=${ACCOUNT_DB_PASSWORD}
     restart: unless-stopped
 
 volumes:
