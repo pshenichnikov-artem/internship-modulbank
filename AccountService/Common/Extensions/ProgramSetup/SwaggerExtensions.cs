@@ -74,8 +74,8 @@ public static class SwaggerExtensions
             options.RoutePrefix = string.Empty;
             options.OAuthClientId("account-service");
 
-            var baseUrl = $"http://localhost:{configuration["ACCOUNT_SERVICE_PORT"] ?? "80"}";
-            options.OAuth2RedirectUrl($"{baseUrl}/oauth2-redirect.html");
+
+            options.OAuth2RedirectUrl("http://localhost:80/oauth2-redirect.html");
             options.OAuthAppName("Account Service API (Client ID: account-service)");
             options.OAuthUsePkce();
             options.OAuthScopeSeparator(" ");

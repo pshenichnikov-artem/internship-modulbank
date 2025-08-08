@@ -27,7 +27,4 @@ public class Transaction
 
     public bool IsCanceled { get; set; } = false;
     public DateTime? CanceledAt { get; set; } = null;
-
-
-    public uint Version { get; set; }
 }

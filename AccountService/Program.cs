@@ -6,7 +6,7 @@ using Serilog;
 Log.Logger = new LoggerConfiguration()
     .ReadFrom.Configuration(new ConfigurationBuilder()
         // ReSharper disable once StringLiteralTypo Название файла
-        .AddJsonFile(path: "appsettings.json", optional: false, reloadOnChange: true)
+        .AddJsonFile("appsettings.json", false, true)
         .Build())
     .CreateLogger();
 
@@ -45,3 +45,5 @@ finally
 {
     Log.CloseAndFlush();
 }
+
+public partial class Program;

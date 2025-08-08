@@ -5,6 +5,7 @@ services:
   account-db:
     image: postgres:16
     container_name: account-db
+    platform: linux/amd64
     environment:
       - POSTGRES_DB=${ACCOUNT_DB}
       - POSTGRES_USER=${ACCOUNT_DB_USER}
@@ -18,6 +19,7 @@ services:
   keycloak-db:
     image: postgres:16
     container_name: keycloak-db
+    platform: linux/amd64
     environment:
       - POSTGRES_DB=${KEYCLOAK_DB}
       - POSTGRES_USER=${KEYCLOAK_DB_USER}
@@ -29,8 +31,9 @@ services:
     restart: unless-stopped
 
   keycloak:
-    image: quay.io/keycloak/keycloak:21.1.1
+    image: quay.io/keycloak/keycloak:26.1.1
     container_name: keycloak
+    platform: linux/amd64
     environment:
       - KC_DB=postgres
       - KC_DB_URL=jdbc:postgresql://keycloak-db:5432/${KEYCLOAK_DB}
@@ -41,7 +44,7 @@ services:
       - KC_METRICS_ENABLED=false
       - KEYCLOAK_ADMIN=${KEYCLOAK_ADMIN}
       - KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD}
-      - KC_HOSTNAME_URL=http://localhost:${KEYCLOAK_PORT}
+      - KC_HOSTNAME_URL=${AUTHENTICATION_SERVER_URL}
     volumes:
       - ./realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
     command:
@@ -58,6 +61,7 @@ services:
       context: AccountService/
       dockerfile: Dockerfile
     container_name: account-service
+    platform: linux/amd64
     ports:
       - "${ACCOUNT_SERVICE_PORT}:80"
     depends_on:

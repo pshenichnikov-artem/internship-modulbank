@@ -19,14 +19,18 @@ public static class AuthenticationExtensions
             {
                 options.Authority = $"{authSettings.AuthenticationServerUrl}/realms/{authSettings.Realm}";
                 options.Audience = authSettings.Audience;
+
                 options.RequireHttpsMetadata = false;
 
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuer = true,
-                    ValidIssuer = $"{authSettings.AuthenticationServerUrl}/realms/{authSettings.Realm}",
+                    ValidIssuers =
+                    [
+                        "http://keycloak:8080/realms/modulbank",
+                        "http://localhost:8080/realms/modulbank"
+                    ],
                     ValidateAudience = true,
-                    ValidAudience = authSettings.Audience,
                     ValidateIssuerSigningKey = true,
                     ValidateLifetime = true
                 };

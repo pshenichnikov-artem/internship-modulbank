@@ -1,3 +1,4 @@
+using AccountService.Common.Extensions;
 using AccountService.Common.Interfaces.Repository;
 using AccountService.Common.Interfaces.Service;
 using AccountService.Common.Models.Domain.Results;
@@ -6,7 +7,6 @@ using AccountService.Features.Transactions.Commands.CreateTransaction;
 using AccountService.Features.Transactions.Models;
 using AutoMapper;
 using FluentValidation;
-using Npgsql;
 
 namespace AccountService.Features.Transactions;
 
@@ -45,7 +45,7 @@ public class TransactionService(
             }
 
             var transaction = mapper.Map<Transaction>(request);
-
+            transaction.Type = request.Type;
             var currencyCheck = await CheckCurrencies(transaction, account, counterpartyAccount, cancellationToken);
             if (!currencyCheck.IsSuccess)
                 return CommandResult<Guid>.Failure(currencyCheck.CommandError!.StatusCode,
@@ -66,7 +66,7 @@ public class TransactionService(
 
             return CommandResult<Guid>.Success(transaction.Id);
         }
-        catch (PostgresException pgEx) when (pgEx.SqlState == "40001")
+        catch (Exception pgEx) when (pgEx.IsConcurrencyException())
         {
             logger.LogWarning(pgEx, "Конфликт параллелизма при создании транзакции");
             await accountRepository.RollbackAsync(cancellationToken);
@@ -139,9 +139,9 @@ public class TransactionService(
 
             return CommandResult<object>.Success();
         }
-        catch (PostgresException pgEx) when (pgEx.SqlState == "40001")
+        catch (Exception pgEx) when (pgEx.IsConcurrencyException())
         {
-            logger.LogWarning(pgEx, "Конфликт параллелизма при создании транзакции");
+            logger.LogWarning(pgEx, "Конфликт параллелизма при отмене транзакции");
             await accountRepository.RollbackAsync(cancellationToken);
             return CommandResult<object>.Failure(409, "Конфликт обновления данных. Попробуйте снова.");
         }
@@ -160,43 +160,70 @@ public class TransactionService(
 
     // == ВАЛИДАЦИЯ ==
 
+
+    /*
+     * Т.к. в GetAccountByIdForUpdateAsync используется FOR UPDATE,
+     * сначала получаем аккаунт с меньшим id (иначе возникает dead lock)
+     */
     private async Task<(Account account, Account? counterparty, (int StatusCode, string Message)? Error)>
         ValidateAccountsAsync(CreateTransactionCommand request, CancellationToken cancellationToken = default)
     {
-        var account = await accountRepository.GetAccountByIdForUpdateAsync(request.AccountId, cancellationToken);
-        if (account == null)
-            return (null!, null, (404, $"Счёт {request.AccountId} не найден"));
-
         if (request is { Type: TransactionType.Transfer, CounterpartyAccountId: null })
             return (null!, null, (400, "Не указан счёт контрагента для перевода"));
 
         if (request.Type != TransactionType.Transfer && request.CounterpartyAccountId != null)
             return (null!, null, (400, "Контрагент указан, но тип транзакции не Transfer"));
 
-        var counterparty = request.CounterpartyAccountId.HasValue
-            ? await accountRepository.GetAccountByIdForUpdateAsync(request.CounterpartyAccountId.Value,
-                cancellationToken)
-            : null;
+        var idsToLock = new List<Guid> { request.AccountId };
+        if (request.CounterpartyAccountId.HasValue)
+            idsToLock.Add(request.CounterpartyAccountId.Value);
 
-        if (request.CounterpartyAccountId.HasValue && counterparty == null)
-            return (null!, null, (404, $"Счёт контрагента {request.CounterpartyAccountId} не найден"));
+        idsToLock.Sort();
+
+        var lockedAccounts = new Dictionary<Guid, Account>();
+
+        foreach (var id in idsToLock)
+        {
+            var acc = await accountRepository.GetAccountByIdForUpdateAsync(id, cancellationToken);
+            if (acc == null)
+                return (null!, null, (404, $"Счёт {id} не найден"));
+
+            lockedAccounts[id] = acc;
+        }
+
+        var account = lockedAccounts[request.AccountId];
+        Account? counterparty = null;
+        if (request.CounterpartyAccountId.HasValue)
+            counterparty = lockedAccounts[request.CounterpartyAccountId.Value];
 
         return (account, counterparty, null);
     }
 
+
     private async Task<(Account account, Account? counterparty, (int StatusCode, string Message)? Error)>
         ValidateAccountsAsync(Guid accountId, Guid? counterpartyId, CancellationToken cancellationToken = default)
     {
-        var account = await accountRepository.GetAccountByIdForUpdateAsync(accountId, cancellationToken);
-        if (account == null)
-            return (null!, null, (404, $"Счёт {accountId} не найден"));
+        var idsToLock = new List<Guid> { accountId };
+        if (counterpartyId.HasValue)
+            idsToLock.Add(counterpartyId.Value);
 
-        var counterparty = counterpartyId.HasValue
-            ? await accountRepository.GetAccountByIdForUpdateAsync(counterpartyId.Value, cancellationToken)
-            : null;
+        idsToLock.Sort();
 
-        if (counterpartyId.HasValue && counterparty == null)
-            return (null!, null, (404, $"Счёт контрагента {counterpartyId} не найден"));
+        var lockedAccounts = new Dictionary<Guid, Account>();
+
+        foreach (var id in idsToLock)
+        {
+            var acc = await accountRepository.GetAccountByIdForUpdateAsync(id, cancellationToken);
+            if (acc == null)
+                return (null!, null, (404, $"Счёт {id} не найден"));
+
+            lockedAccounts[id] = acc;
+        }
+
+        var account = lockedAccounts[accountId];
+        Account? counterparty = null;
+        if (counterpartyId.HasValue)
+            counterparty = lockedAccounts[counterpartyId.Value];
 
         return (account, counterparty, null);
     }

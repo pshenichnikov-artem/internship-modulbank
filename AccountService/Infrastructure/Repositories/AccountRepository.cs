@@ -94,7 +94,7 @@ public class AccountRepository(ApplicationDbContext context) : IAccountRepositor
     public async Task<Account?> GetAccountByIdForUpdateAsync(Guid id, CancellationToken cancellationToken = default)
     {
         return await context.Accounts
-            .FromSqlRaw("SELECT * FROM \"Accounts\" WHERE \"Id\" = {0} FOR UPDATE", id)
+            .FromSqlRaw("SELECT *, xmin FROM \"Accounts\" WHERE \"Id\" = {0} FOR UPDATE", id)
             .FirstOrDefaultAsync(a => a.Id == id, cancellationToken);
     }
 

@@ -1,6 +1,6 @@
-﻿using System;
-using AccountService.Infrastructure.Data;
+﻿using AccountService.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore.Migrations;
+using System;
 
 #nullable disable
 
@@ -12,6 +12,7 @@ namespace AccountService.Infrastructure.Data.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.Sql("CREATE EXTENSION IF NOT EXISTS btree_gist;");
             migrationBuilder.Sql(StoredProcedures.GetAccrueInterestProcedureScript());
             migrationBuilder.CreateTable(
                 name: "Accounts",
@@ -26,7 +27,8 @@ namespace AccountService.Infrastructure.Data.Migrations
                     OpenedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
                     ClosedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
                     IsDeleted = table.Column<bool>(type: "boolean", nullable: false),
-                    LastInterestAccrual = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
+                    LastInterestAccrual = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -46,8 +48,7 @@ namespace AccountService.Infrastructure.Data.Migrations
                     Description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
                     Timestamp = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
                     IsCanceled = table.Column<bool>(type: "boolean", nullable: false),
-                    CanceledAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
-                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
+                    CanceledAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -70,6 +71,12 @@ namespace AccountService.Infrastructure.Data.Migrations
                 name: "IX_Transactions_AccountId_Timestamp",
                 table: "Transactions",
                 columns: new[] { "AccountId", "Timestamp" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Transactions_Timestamp_GiST",
+                table: "Transactions",
+                column: "Timestamp")
+                .Annotation("Npgsql:IndexMethod", "gist");
         }
 
         /// <inheritdoc />

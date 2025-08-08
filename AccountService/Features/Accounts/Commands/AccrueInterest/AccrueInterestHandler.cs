@@ -1,10 +1,10 @@
+using AccountService.Common.Extensions;
 using AccountService.Common.Interfaces.Repository;
 using AccountService.Common.Models.Domain.Results;
 using AccountService.Features.Accounts.Model;
 using AccountService.Infrastructure.Data;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-using Npgsql;
 
 namespace AccountService.Features.Accounts.Commands.AccrueInterest;
 
@@ -48,7 +48,7 @@ public class AccrueInterestHandler(IAccountRepository accountRepository, Applica
             await accountRepository.CommitAsync(cancellationToken);
             return CommandResult<Guid>.Success();
         }
-        catch (PostgresException pgEx) when (pgEx.SqlState == "40001")
+        catch (Exception pgEx) when (pgEx.IsConcurrencyException())
         {
             await accountRepository.RollbackAsync(cancellationToken);
             return CommandResult<Guid>.Failure(409, "Конфликт параллелизма. Попробуйте выполнить операцию позже.");
