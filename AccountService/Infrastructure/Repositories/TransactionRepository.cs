@@ -29,7 +29,7 @@ public class TransactionRepository(ApplicationDbContext context) : ITransactionR
     {
         var query = context.Transactions.AsQueryable();
 
-        if (accountIds != null && accountIds.Any())
+        if (accountIds is { Count: > 0 })
             query = query.Where(t => accountIds.Contains(t.AccountId));
 
         if (fromDate.HasValue)
@@ -38,15 +38,12 @@ public class TransactionRepository(ApplicationDbContext context) : ITransactionR
         if (toDate.HasValue)
             query = query.Where(t => t.Timestamp <= toDate.Value);
 
-        if (types != null && types.Any())
+        if (types is { Count: > 0 })
             query = query.Where(t => types.Contains(t.Type));
 
         var totalCount = await query.CountAsync(cancellationToken);
 
-        if (sortOrders != null && sortOrders.Any())
-            query = query.Sort(sortOrders);
-        else
-            query = query.OrderByDescending(t => t.Timestamp);
+        query = sortOrders is { Count: > 0 } ? query.Sort(sortOrders) : query.OrderByDescending(t => t.Timestamp);
 
         query = query.Paginate(page, pageSize);
 

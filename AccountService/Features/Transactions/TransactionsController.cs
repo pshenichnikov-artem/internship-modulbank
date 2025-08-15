@@ -29,7 +29,7 @@ public class TransactionsController(IMediator mediator) : ControllerBase
     [SwaggerResponse(StatusCodes.Status400BadRequest, SwaggerMessages.ValidationError, typeof(ErrorResponse))]
     [SwaggerResponse(StatusCodes.Status401Unauthorized, SwaggerMessages.Unauthorized, typeof(ErrorResponse))]
     [SwaggerResponse(StatusCodes.Status500InternalServerError, SwaggerMessages.InternalError, typeof(ErrorResponse))]
-    public async Task<IActionResult> GetTransactions(
+    public async Task<IActionResult> PostSearchTransactions(
         [FromBody] GetTransactionsQuery query,
         CancellationToken cancellationToken)
     {

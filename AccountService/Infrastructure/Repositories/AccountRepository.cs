@@ -1,4 +1,5 @@
-﻿using AccountService.Common.Extensions;
+﻿using System.Data;
+using AccountService.Common.Extensions;
 using AccountService.Common.Interfaces.Repository;
 using AccountService.Common.Models.Domain;
 using AccountService.Features.Accounts.Model;
@@ -37,18 +38,15 @@ public class AccountRepository(ApplicationDbContext context) : IAccountRepositor
     {
         var query = context.Accounts.AsQueryable();
 
-        if (ownerIds != null && ownerIds.Any()) query = query.Where(a => ownerIds.Contains(a.OwnerId));
+        if (ownerIds is { Count: > 0 }) query = query.Where(a => ownerIds.Contains(a.OwnerId));
 
-        if (currencies != null && currencies.Any()) query = query.Where(a => currencies.Contains(a.Currency));
+        if (currencies is { Count: > 0 }) query = query.Where(a => currencies.Contains(a.Currency));
 
-        if (types != null && types.Any()) query = query.Where(a => types.Contains(a.Type));
+        if (types is { Count: > 0 }) query = query.Where(a => types.Contains(a.Type));
 
         var totalCount = await query.CountAsync(cancellationToken);
 
-        if (sortOrders != null && sortOrders.Any())
-            query = query.Sort(sortOrders);
-        else
-            query = query.OrderBy(a => a.Id);
+        query = sortOrders is { Count: > 0 } ? query.Sort(sortOrders) : query.OrderBy(a => a.Id);
 
         query = query.Paginate(page, pageSize);
 
@@ -59,10 +57,9 @@ public class AccountRepository(ApplicationDbContext context) : IAccountRepositor
 
     public async Task BeginTransactionAsync(CancellationToken cancellationToken = default)
     {
-        // Реальный код транзакции (для поддерживаемых БД) в in-memory ошибка
-        // _transaction = await context.Database.BeginTransactionAsync(cancellationToken);
+        _transaction = await context.Database
+            .BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
 
-        _transaction = null;
         await Task.CompletedTask;
     }
 
@@ -97,7 +94,7 @@ public class AccountRepository(ApplicationDbContext context) : IAccountRepositor
     public async Task<Account?> GetAccountByIdForUpdateAsync(Guid id, CancellationToken cancellationToken = default)
     {
         return await context.Accounts
-            // .FromSqlRaw("SELECT * FROM \"Accounts\" WHERE \"Id\" = {0} FOR UPDATE", id)
+            .FromSqlRaw("SELECT *, xmin FROM \"Accounts\" WHERE \"Id\" = {0} FOR UPDATE", id)
             .FirstOrDefaultAsync(a => a.Id == id, cancellationToken);
     }
 

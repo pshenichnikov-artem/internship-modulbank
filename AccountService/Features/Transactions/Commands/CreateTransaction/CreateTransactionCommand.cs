@@ -1,4 +1,5 @@
-﻿using AccountService.Common.Models.Domain.Results;
+using System.Text.Json.Serialization;
+using AccountService.Common.Models.Domain.Results;
 using AccountService.Features.Transactions.Models;
 using MediatR;
 using Swashbuckle.AspNetCore.Annotations;
@@ -10,7 +11,8 @@ public record CreateTransactionCommand : IRequest<CommandResult<Guid>>
     [SwaggerSchema(Description = "Идентификатор счета, по которому проводится транзакция")]
     public Guid AccountId { get; init; }
 
-    [SwaggerSchema(Description = "Идентификатор владельца счета(можно передавать null, на сервере всегда 1 владелец")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    [SwaggerSchema(ReadOnly = true)]
     public Guid? OwnerId { get; set; }
 
     [SwaggerSchema(Description =

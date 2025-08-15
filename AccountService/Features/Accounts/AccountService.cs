@@ -1,3 +1,4 @@
+using AccountService.Common.Extensions;
 using AccountService.Common.Interfaces.Repository;
 using AccountService.Common.Interfaces.Service;
 using AccountService.Common.Models.Domain.Results;
@@ -48,6 +49,12 @@ public class AccountService(
             account.Currency = newCurrency;
 
             return CommandResult<Account>.Success(account);
+        }
+        catch (Exception pgEx) when (pgEx.IsConcurrencyException())
+        {
+            logger.LogWarning(pgEx, "Конфликт параллелизма при обновлении валюты счета");
+            await accountRepository.RollbackAsync(cancellationToken);
+            return CommandResult<Account>.Failure(409, "Попробуйте снова.");
         }
         catch (Exception ex)
         {

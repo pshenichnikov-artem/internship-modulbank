@@ -1,4 +1,6 @@
 using AccountService.Common.Extensions.ProgramSetup;
+using AccountService.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
 using Serilog;
 
 Log.Logger = new LoggerConfiguration()
@@ -16,14 +18,22 @@ try
     builder.Host.UseSerilog((ctx, lc) => lc
         .ReadFrom.Configuration(ctx.Configuration));
 
-    builder.Services.AddApplicationServices();
+    builder.Services.AddApplicationServices(builder.Configuration);
     builder.Services.AddCustomAuthentication(builder.Configuration);
     builder.Services.AddCustomSwagger(builder.Configuration);
+    builder.Services.AddHangFire(builder.Configuration);
 
     var app = builder.Build();
 
+    using (var scope = app.Services.CreateScope())
+    {
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        db.Database.Migrate();
+    }
+
     app.UseCustomSwagger(builder.Configuration);
     app.UseCustomMiddleware();
+    app.UseHangFire();
 
     app.Run();
 }
@@ -35,3 +45,5 @@ finally
 {
     Log.CloseAndFlush();
 }
+
+public partial class Program;
