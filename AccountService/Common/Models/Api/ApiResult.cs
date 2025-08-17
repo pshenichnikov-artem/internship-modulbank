@@ -1,4 +1,4 @@
-﻿using AccountService.Common.Models.Domain.Results;
+using AccountService.Common.Models.Domain.Results;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AccountService.Common.Models.Api;

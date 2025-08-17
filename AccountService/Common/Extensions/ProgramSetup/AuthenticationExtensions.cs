@@ -11,6 +11,8 @@ public static class AuthenticationExtensions
     public static IServiceCollection AddCustomAuthentication(this IServiceCollection services,
         IConfiguration configuration)
     {
+        var keyloackPort = configuration["KeycloakPort"] ?? "8080";
+
         var authSettings = new AuthenticationSettings(configuration);
         services.AddSingleton(authSettings);
 
@@ -24,9 +26,11 @@ public static class AuthenticationExtensions
 
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
-                    ValidateIssuer = true,
+                    ValidateIssuer = false,
                     ValidIssuers =
                     [
+                        $"http://keycloak:{keyloackPort}/realms/modulbank",
+                        $"http://localhost:{keyloackPort}/realms/modulbank",
                         "http://keycloak:8080/realms/modulbank",
                         "http://localhost:8080/realms/modulbank"
                     ],

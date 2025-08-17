@@ -1,6 +1,6 @@
-﻿namespace AccountService.Common.Interfaces.Service;
+namespace AccountService.Common.Interfaces.Service;
 
 public interface IClientService
 {
-    Task<bool> IsClientExistsAsync(Guid clientId, CancellationToken cancellationToken);
+    Task<bool> IsClientExistsAsync(Guid clientId, CancellationToken ct);
 }

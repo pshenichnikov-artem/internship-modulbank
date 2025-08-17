@@ -1,4 +1,4 @@
-﻿using AccountService.Common.Extensions;
+using AccountService.Common.Extensions;
 using AccountService.Common.Interfaces.Repository;
 using AccountService.Common.Models.Domain;
 using AccountService.Features.Transactions.Models;
@@ -9,10 +9,10 @@ namespace AccountService.Infrastructure.Repositories;
 
 public class TransactionRepository(ApplicationDbContext context) : ITransactionRepository
 {
-    public async Task<Transaction?> GetTransactionByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<Transaction?> GetTransactionByIdAsync(Guid id, CancellationToken ct = default)
     {
         var transaction = await context.Transactions
-            .FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
+            .FirstOrDefaultAsync(t => t.Id == id, ct);
 
         return transaction;
     }
@@ -25,7 +25,7 @@ public class TransactionRepository(ApplicationDbContext context) : ITransactionR
         List<SortOrder>? sortOrders = null,
         int page = 1,
         int pageSize = 10,
-        CancellationToken cancellationToken = default)
+        CancellationToken ct = default)
     {
         var query = context.Transactions.AsQueryable();
 
@@ -41,26 +41,26 @@ public class TransactionRepository(ApplicationDbContext context) : ITransactionR
         if (types is { Count: > 0 })
             query = query.Where(t => types.Contains(t.Type));
 
-        var totalCount = await query.CountAsync(cancellationToken);
+        var totalCount = await query.CountAsync(ct);
 
         query = sortOrders is { Count: > 0 } ? query.Sort(sortOrders) : query.OrderByDescending(t => t.Timestamp);
 
         query = query.Paginate(page, pageSize);
 
-        var transactions = await query.ToListAsync(cancellationToken);
+        var transactions = await query.ToListAsync(ct);
 
         return (transactions, totalCount);
     }
 
-    public async Task CreateTransactionAsync(Transaction transaction, CancellationToken cancellationToken = default)
+    public async Task CreateTransactionAsync(Transaction transaction, CancellationToken ct = default)
     {
         context.Transactions.Add(transaction);
-        await context.SaveChangesAsync(cancellationToken);
+        await context.SaveChangesAsync(ct);
     }
 
-    public async Task UpdateTransactionAsync(Transaction transaction, CancellationToken cancellationToken = default)
+    public async Task UpdateTransactionAsync(Transaction transaction, CancellationToken ct = default)
     {
         context.Entry(transaction).State = EntityState.Modified;
-        await context.SaveChangesAsync(cancellationToken);
+        await context.SaveChangesAsync(ct);
     }
 }

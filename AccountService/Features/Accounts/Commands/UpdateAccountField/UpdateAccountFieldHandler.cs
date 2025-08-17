@@ -1,33 +1,36 @@
-﻿using AccountService.Common.Interfaces.Repository;
+using AccountService.Common.Interfaces.Repository;
 using AccountService.Common.Interfaces.Service;
 using AccountService.Common.Models.Domain.Results;
 using AccountService.Features.Accounts.Model;
 using MediatR;
+using Messaging.Events;
+using Messaging.Interfaces;
 
 namespace AccountService.Features.Accounts.Commands.UpdateAccountField;
 
 public class UpdateAccountFieldHandler(
     IAccountRepository accountRepository,
     IAccountService accountService,
+    IOutboxService outboxService,
     ILogger<UpdateAccountFieldHandler> logger)
     : IRequestHandler<UpdateAccountFieldCommand, CommandResult<object>>
 {
     public async Task<CommandResult<object>> Handle(UpdateAccountFieldCommand request,
-        CancellationToken cancellationToken)
+        CancellationToken ct)
     {
         try
         {
             return request.FieldName.Equals("Currency", StringComparison.OrdinalIgnoreCase)
-                ? await HandleCurrencyUpdateAsync(request, cancellationToken)
-                : await HandleInterestRateUpdateAsync(request, cancellationToken);
+                ? await HandleCurrencyUpdateAsync(request, ct)
+                : await HandleInterestRateUpdateAsync(request, ct);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex,
-                "Неожиданная ошибка при обновлении поля '{FieldName}' счета {AccountId}. OwnerId: {OwnerId}, RequestTime: {TimeUtc}",
-                request.FieldName, request.Id, request.OwnerId, DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"));
+            logger.LogError(
+                "Неожиданная ошибка при обновлении поля '{FieldName}' счета {AccountId}. OwnerId: {OwnerId}, RequestTime: {TimeUtc}, Error: {Error}",
+                request.FieldName, request.Id, request.OwnerId, DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"), ex.Message);
 
-            await SafeRollbackAsync(cancellationToken);
+            await SafeRollbackAsync(ct);
             return CommandResult<object>.Failure(500, "Внутренняя ошибка сервера");
         }
     }
@@ -55,14 +58,19 @@ public class UpdateAccountFieldHandler(
         try
         {
             await accountRepository.UpdateAccountAsync(updateResult.Data, ct);
+            
+            var accountUpdated = new AccountUpdated(updateResult.Data.Id, updateResult.Data.OwnerId,
+                updateResult.Data.Currency, updateResult.Data.InterestRate);
+            await outboxService.AddAsync(accountUpdated, ct);
+            
             await accountRepository.CommitAsync(ct);
             return CommandResult<object>.Success();
         }
         catch (Exception ex)
         {
-            logger.LogError(ex,
-                "Ошибка при обновлении счета {AccountId} при смене валюты на '{Currency}'. OwnerId: {OwnerId}, RequestTime: {TimeUtc}",
-                req.Id, currencyCode, req.OwnerId, DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"));
+            logger.LogError(
+                "Ошибка при обновлении счета {AccountId} при смене валюты на '{Currency}'. OwnerId: {OwnerId}, RequestTime: {TimeUtc}, Error: {Error}",
+                req.Id, currencyCode, req.OwnerId, DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"), ex.Message);
 
             await SafeRollbackAsync(ct);
             return CommandResult<object>.Failure(500, "Не удалось сохранить изменения");
@@ -72,44 +80,60 @@ public class UpdateAccountFieldHandler(
     private async Task<CommandResult<object>> HandleInterestRateUpdateAsync(UpdateAccountFieldCommand req,
         CancellationToken ct)
     {
+        await accountRepository.BeginTransactionAsync(ct);
+        
         var account = await accountRepository.GetAccountByIdAsync(req.Id, ct);
         if (account == null)
+        {
+            await accountRepository.RollbackAsync(ct);
             return CommandResult<object>.Failure(404, $"Счет с ID {req.Id} не найден");
+        }
 
         if (account.OwnerId != req.OwnerId)
+        {
+            await accountRepository.RollbackAsync(ct);
             return CommandResult<object>.Failure(403, "У вас нет доступа к этому счету");
+        }
 
         if (account.Type == AccountType.Checking)
+        {
+            await accountRepository.RollbackAsync(ct);
             return CommandResult<object>.Failure(400, "Нельзя установить процентную ставку для расчетного счета");
+        }
 
         account.InterestRate = Convert.ToDecimal(req.FieldValue);
 
         try
         {
             await accountRepository.UpdateAccountAsync(account, ct);
+            
+            var accountUpdated = new AccountUpdated(account.Id, account.OwnerId,
+                account.Currency, account.InterestRate);
+            await outboxService.AddAsync(accountUpdated, ct);
+            
             await accountRepository.CommitAsync(ct);
             return CommandResult<object>.Success();
         }
         catch (Exception ex)
         {
-            logger.LogError(ex,
-                "Ошибка при сохранении изменений поля InterestRate счета {AccountId}. OwnerId: {OwnerId}, RequestTime: {TimeUtc}",
-                req.Id, req.OwnerId, DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"));
+            logger.LogError(
+                "Ошибка при сохранении изменений поля InterestRate счета {AccountId}. OwnerId: {OwnerId}, RequestTime: {TimeUtc}, Error: {Error}",
+                req.Id, req.OwnerId, DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"), ex.Message);
 
             await SafeRollbackAsync(ct);
             return CommandResult<object>.Failure(500, "Не удалось сохранить изменения");
         }
     }
 
-    private async Task SafeRollbackAsync(CancellationToken cancellationToken)
+    private async Task SafeRollbackAsync(CancellationToken ct)
     {
         try
         {
-            await accountRepository.RollbackAsync(cancellationToken);
+            await accountRepository.RollbackAsync(ct);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Ошибка при попытке отката транзакции");
+            logger.LogError("Ошибка при попытке отката транзакции: {Error}", ex.Message);
         }
     }
 }

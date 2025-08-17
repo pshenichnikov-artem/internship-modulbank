@@ -1,4 +1,4 @@
-﻿using Swashbuckle.AspNetCore.Annotations;
+using Swashbuckle.AspNetCore.Annotations;
 
 // ReSharper disable UnusedMember.Global
 // DTO используется только для сериализации ответа

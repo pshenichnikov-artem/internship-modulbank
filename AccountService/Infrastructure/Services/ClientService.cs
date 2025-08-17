@@ -1,4 +1,4 @@
-﻿using System.Net.Http.Headers;
+using System.Net.Http.Headers;
 using System.Text.Json;
 using AccountService.Common.Interfaces.Service;
 using AccountService.Common.Models;
@@ -7,9 +7,9 @@ namespace AccountService.Infrastructure.Services;
 
 public class ClientService(HttpClient httpClient, AuthenticationSettings authSettings) : IClientService
 {
-    public async Task<bool> IsClientExistsAsync(Guid clientId, CancellationToken cancellationToken)
+    public async Task<bool> IsClientExistsAsync(Guid clientId, CancellationToken ct)
     {
-        var token = await GetAdminAccessTokenAsync(cancellationToken);
+        var token = await GetAdminAccessTokenAsync(ct);
         if (string.IsNullOrEmpty(token))
             return false;
 
@@ -20,7 +20,7 @@ public class ClientService(HttpClient httpClient, AuthenticationSettings authSet
 
         try
         {
-            var response = await httpClient.SendAsync(request, cancellationToken);
+            var response = await httpClient.SendAsync(request, ct);
             return response.IsSuccessStatusCode;
         }
         catch
@@ -29,7 +29,7 @@ public class ClientService(HttpClient httpClient, AuthenticationSettings authSet
         }
     }
 
-    private async Task<string?> GetAdminAccessTokenAsync(CancellationToken cancellationToken)
+    private async Task<string?> GetAdminAccessTokenAsync(CancellationToken ct)
     {
         var form = new Dictionary<string, string>
         {
@@ -45,11 +45,11 @@ public class ClientService(HttpClient httpClient, AuthenticationSettings authSet
 
         try
         {
-            var response = await httpClient.SendAsync(request, cancellationToken);
+            var response = await httpClient.SendAsync(request, ct);
             if (!response.IsSuccessStatusCode)
                 return null;
 
-            var content = await response.Content.ReadAsStringAsync(cancellationToken);
+            var content = await response.Content.ReadAsStringAsync(ct);
             using var doc = JsonDocument.Parse(content);
             return doc.RootElement.GetProperty("access_token").GetString();
         }

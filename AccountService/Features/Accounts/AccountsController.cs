@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using AccountService.Common.Constants;
 using AccountService.Common.Extensions;
 using AccountService.Common.Models.Api;
@@ -32,9 +32,9 @@ public class AccountsController(IMediator mediator) : ControllerBase
     [SwaggerResponse(StatusCodes.Status500InternalServerError, SwaggerMessages.InternalError, typeof(ErrorResponse))]
     public async Task<IActionResult> PostSearchAccounts(
         GetAccountsQuery query,
-        CancellationToken cancellationToken)
+        CancellationToken ct)
     {
-        var result = await mediator.Send(query, cancellationToken);
+        var result = await mediator.Send(query, ct);
         return ApiResult.FromCommandResult(result);
     }
 
@@ -48,10 +48,10 @@ public class AccountsController(IMediator mediator) : ControllerBase
     public async Task<IActionResult> GetAccount(
         [FromRoute] Guid id,
         [FromQuery] List<string>? fields = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken ct = default)
     {
         var query = new GetAccountByIdQuery(id, fields);
-        var result = await mediator.Send(query, cancellationToken);
+        var result = await mediator.Send(query, ct);
         return ApiResult.FromCommandResult(result);
     }
 
@@ -64,7 +64,7 @@ public class AccountsController(IMediator mediator) : ControllerBase
     [SwaggerResponse(StatusCodes.Status500InternalServerError, SwaggerMessages.InternalError, typeof(ErrorResponse))]
     public async Task<IActionResult> CreateAccount(
         [FromBody] CreateAccountRequest request,
-        CancellationToken cancellationToken)
+        CancellationToken ct)
     {
         var command = new CreateAccountCommand
         {
@@ -73,7 +73,7 @@ public class AccountsController(IMediator mediator) : ControllerBase
             Type = request.Type,
             InterestRate = request.InterestRate
         };
-        var result = await mediator.Send(command, cancellationToken);
+        var result = await mediator.Send(command, ct);
         return ApiResult.FromCommandResult(result, nameof(GetAccount),
             new { id = result.IsSuccess ? result.Data : Guid.Empty });
     }
@@ -89,7 +89,7 @@ public class AccountsController(IMediator mediator) : ControllerBase
     public async Task<IActionResult> UpdateAccount(
         [FromRoute] Guid id,
         [FromBody] UpdateAccountRequest request,
-        CancellationToken cancellationToken)
+        CancellationToken ct)
     {
         var command = new UpdateAccountCommand
         {
@@ -98,7 +98,7 @@ public class AccountsController(IMediator mediator) : ControllerBase
             InterestRate = request.InterestRate,
             OwnerId = User.GetUserId()
         };
-        var result = await mediator.Send(command, cancellationToken);
+        var result = await mediator.Send(command, ct);
         return ApiResult.FromCommandResult(result);
     }
 
@@ -118,7 +118,7 @@ public class AccountsController(IMediator mediator) : ControllerBase
         [FromRoute] Guid id,
         [FromRoute] string fieldName,
         [FromBody] JsonElement fieldValue,
-        CancellationToken cancellationToken)
+        CancellationToken ct)
     {
         object? typedValue = fieldName.ToLower() switch
         {
@@ -144,7 +144,7 @@ public class AccountsController(IMediator mediator) : ControllerBase
             OwnerId = User.GetUserId()
         };
 
-        var result = await mediator.Send(command, cancellationToken);
+        var result = await mediator.Send(command, ct);
         return ApiResult.FromCommandResult(result);
     }
 
@@ -159,7 +159,7 @@ public class AccountsController(IMediator mediator) : ControllerBase
     [SwaggerResponse(StatusCodes.Status500InternalServerError, SwaggerMessages.InternalError, typeof(ErrorResponse))]
     public async Task<IActionResult> DeleteAccount(
         [FromRoute] Guid id,
-        CancellationToken cancellationToken)
+        CancellationToken ct)
     {
         var command = new DeleteAccountCommand
         {
@@ -167,7 +167,7 @@ public class AccountsController(IMediator mediator) : ControllerBase
             OwnerId = User.GetUserId()
         };
 
-        var result = await mediator.Send(command, cancellationToken);
+        var result = await mediator.Send(command, ct);
         return ApiResult.FromCommandResult(result);
     }
 }

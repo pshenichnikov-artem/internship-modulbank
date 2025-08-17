@@ -1,4 +1,4 @@
-﻿using System.Data;
+using System.Data;
 using AccountService.Common.Extensions;
 using AccountService.Common.Interfaces.Repository;
 using AccountService.Common.Models.Domain;
@@ -13,17 +13,17 @@ public class AccountRepository(ApplicationDbContext context) : IAccountRepositor
 {
     private IDbContextTransaction? _transaction;
 
-    public async Task<Account> CreateAccountAsync(Account account, CancellationToken cancellationToken = default)
+    public async Task<Account> CreateAccountAsync(Account account, CancellationToken ct = default)
     {
         context.Accounts.Add(account);
-        await context.SaveChangesAsync(cancellationToken);
+        await context.SaveChangesAsync(ct);
         return account;
     }
 
-    public async Task<Account> UpdateAccountAsync(Account account, CancellationToken cancellationToken = default)
+    public async Task<Account> UpdateAccountAsync(Account account, CancellationToken ct = default)
     {
         context.Entry(account).State = EntityState.Modified;
-        await context.SaveChangesAsync(cancellationToken);
+        await context.SaveChangesAsync(ct);
         return account;
     }
 
@@ -34,7 +34,7 @@ public class AccountRepository(ApplicationDbContext context) : IAccountRepositor
         List<SortOrder>? sortOrders = null,
         int page = 1,
         int pageSize = 100,
-        CancellationToken cancellationToken = default)
+        CancellationToken ct = default)
     {
         var query = context.Accounts.AsQueryable();
 
@@ -44,30 +44,30 @@ public class AccountRepository(ApplicationDbContext context) : IAccountRepositor
 
         if (types is { Count: > 0 }) query = query.Where(a => types.Contains(a.Type));
 
-        var totalCount = await query.CountAsync(cancellationToken);
+        var totalCount = await query.CountAsync(ct);
 
         query = sortOrders is { Count: > 0 } ? query.Sort(sortOrders) : query.OrderBy(a => a.Id);
 
         query = query.Paginate(page, pageSize);
 
-        var accounts = await query.ToListAsync(cancellationToken);
+        var accounts = await query.ToListAsync(ct);
 
         return (accounts, totalCount);
     }
 
-    public async Task BeginTransactionAsync(CancellationToken cancellationToken = default)
+    public async Task BeginTransactionAsync(CancellationToken ct = default)
     {
         _transaction = await context.Database
-            .BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+            .BeginTransactionAsync(IsolationLevel.Serializable, ct);
 
         await Task.CompletedTask;
     }
 
-    public async Task CommitAsync(CancellationToken cancellationToken = default)
+    public async Task CommitAsync(CancellationToken ct = default)
     {
         if (_transaction != null)
         {
-            await _transaction.CommitAsync(cancellationToken);
+            await _transaction.CommitAsync(ct);
             await _transaction.DisposeAsync();
             _transaction = null;
         }
@@ -77,11 +77,11 @@ public class AccountRepository(ApplicationDbContext context) : IAccountRepositor
         }
     }
 
-    public async Task RollbackAsync(CancellationToken cancellationToken = default)
+    public async Task RollbackAsync(CancellationToken ct = default)
     {
         if (_transaction != null)
         {
-            await _transaction.RollbackAsync(cancellationToken);
+            await _transaction.RollbackAsync(ct);
             await _transaction.DisposeAsync();
             _transaction = null;
         }
@@ -91,16 +91,23 @@ public class AccountRepository(ApplicationDbContext context) : IAccountRepositor
         }
     }
 
-    public async Task<Account?> GetAccountByIdForUpdateAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<Account?> GetAccountByIdForUpdateAsync(Guid id, CancellationToken ct = default)
     {
         return await context.Accounts
             .FromSqlRaw("SELECT *, xmin FROM \"Accounts\" WHERE \"Id\" = {0} FOR UPDATE", id)
-            .FirstOrDefaultAsync(a => a.Id == id, cancellationToken);
+            .FirstOrDefaultAsync(a => a.Id == id, ct);
     }
 
-    public async Task<Account?> GetAccountByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<Account?> GetAccountByIdAsync(Guid id, CancellationToken ct = default)
     {
         return await context.Accounts
-            .FirstOrDefaultAsync(a => a.Id == id, cancellationToken);
+            .FirstOrDefaultAsync(a => a.Id == id, ct);
+    }
+
+    public async Task<int> UpdateAccountsFrozenStatusAsync(Guid ownerId, bool isFrozen, CancellationToken ct = default)
+    {
+        return await context.Accounts
+            .Where(a => a.OwnerId == ownerId && !a.IsDeleted)
+            .ExecuteUpdateAsync(a => a.SetProperty(x => x.IsFrozen, isFrozen), ct);
     }
 }

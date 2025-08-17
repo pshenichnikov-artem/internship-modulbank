@@ -1,4 +1,4 @@
-﻿using AccountService.Features.Transactions.Models;
+using AccountService.Features.Transactions.Models;
 using FluentValidation;
 
 namespace AccountService.Features.Transactions.Query.GetTransactions;

@@ -1,18 +1,24 @@
-﻿using AccountService.Common.Interfaces.Repository;
+using AccountService.Common.Interfaces.Repository;
 using AccountService.Common.Models.Domain.Results;
 using FluentValidation;
 using MediatR;
+using Messaging.Events;
+using Messaging.Interfaces;
 
 namespace AccountService.Features.Accounts.Commands.DeleteAccount;
 
-public class DeleteAccountHandler(IAccountRepository accountRepository, ILogger<DeleteAccountHandler> logger)
+public class DeleteAccountHandler(
+    IAccountRepository accountRepository,
+    IOutboxService outboxService,
+    ILogger<DeleteAccountHandler> logger)
     : IRequestHandler<DeleteAccountCommand, CommandResult<object>>
 {
-    public async Task<CommandResult<object>> Handle(DeleteAccountCommand request, CancellationToken cancellationToken)
+    public async Task<CommandResult<object>> Handle(DeleteAccountCommand request, CancellationToken ct)
     {
         try
         {
-            var account = await accountRepository.GetAccountByIdAsync(request.AccountId, cancellationToken);
+            await accountRepository.BeginTransactionAsync(ct);
+            var account = await accountRepository.GetAccountByIdAsync(request.AccountId, ct);
             if (account == null) return CommandResult<object>.Failure(404, $"Счет с ID {request.AccountId} не найден");
 
             if (account.OwnerId != request.OwnerId)
@@ -23,21 +29,28 @@ public class DeleteAccountHandler(IAccountRepository accountRepository, ILogger<
             account.IsDeleted = true;
             account.ClosedAt = DateTime.UtcNow;
 
-            await accountRepository.UpdateAccountAsync(account, cancellationToken);
+            await accountRepository.UpdateAccountAsync(account, ct);
 
+            var accountClosed = new AccountClosed(account.Id, account.OwnerId, account.Currency);
+            await outboxService.AddAsync(accountClosed, ct);
+
+            await accountRepository.CommitAsync(ct);
             return CommandResult<object>.Success();
         }
         catch (ValidationException ex)
         {
+            await accountRepository.RollbackAsync(ct);
             return CommandResult<object>.Failure(400, ex.Message);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex,
-                "Ошибка при удалении счёта. AccountId: {AccountId}, OwnerId: {OwnerId}, Time: {TimeUtc}",
+            await accountRepository.RollbackAsync(ct);
+            logger.LogError(
+                "Ошибка при удалении счёта. AccountId: {AccountId}, OwnerId: {OwnerId}, Time: {TimeUtc}, Error: {Error}",
                 request.AccountId,
                 request.OwnerId,
-                DateTime.UtcNow);
+                DateTime.UtcNow,
+                ex.Message);
             return CommandResult<object>.Failure(500, ex.Message);
         }
     }

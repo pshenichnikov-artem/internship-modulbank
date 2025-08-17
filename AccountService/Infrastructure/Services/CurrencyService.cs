@@ -1,4 +1,4 @@
-﻿using AccountService.Common.Interfaces.Service;
+using AccountService.Common.Interfaces.Service;
 
 namespace AccountService.Infrastructure.Services;
 
@@ -16,7 +16,7 @@ public class CurrencyService(ILogger<CurrencyService> logger) : ICurrencyService
         "RUB", "USD", "EUR"
     };
 
-    public Task<bool> IsSupportedCurrencyAsync(string currencyCode, CancellationToken cancellationToken = default)
+    public Task<bool> IsSupportedCurrencyAsync(string currencyCode, CancellationToken ct = default)
     {
         return Task.FromResult(_supportedCurrencies.Contains(currencyCode));
     }

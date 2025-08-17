@@ -1,4 +1,4 @@
-﻿using AccountService.Common.Validators;
+using AccountService.Common.Validators;
 using FluentValidation;
 
 namespace AccountService.Features.Transactions.Commands.UpdateTransaction;

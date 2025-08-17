@@ -1,4 +1,4 @@
-﻿using AccountService.Common.Models.Domain.Results;
+using AccountService.Common.Models.Domain.Results;
 using AccountService.Features.Transactions.Commands.CreateTransaction;
 
 namespace AccountService.Common.Interfaces.Service;
@@ -6,8 +6,8 @@ namespace AccountService.Common.Interfaces.Service;
 public interface ITransactionService
 {
     Task<CommandResult<Guid>> CreateTransactionAsync(CreateTransactionCommand request,
-        CancellationToken cancellationToken);
+        CancellationToken ct);
 
     Task<CommandResult<object>> CancelTransactionAsync(Guid transactionId, Guid ownerId,
-        CancellationToken cancellationToken);
+        CancellationToken ct);
 }

@@ -1,4 +1,4 @@
-﻿using AccountService.Common.Models.Api;
+using AccountService.Common.Models.Api;
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc.Filters;
 

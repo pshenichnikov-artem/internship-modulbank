@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
 
   account-db:
@@ -14,6 +12,7 @@ services:
       - "${ACCOUNT_DB_PORT}:5432"
     volumes:
       - account_data:/var/lib/postgresql/data
+    command: ["postgres", "-c", "logging_collector=off", "-c", "log_statement=none", "-c", "log_min_messages=panic", "-c", "log_checkpoints=off", "-c", "log_connections=off", "-c", "log_disconnections=off"]
     restart: unless-stopped
 
   keycloak-db:
@@ -28,6 +27,7 @@ services:
       - "${KEYCLOAK_DB_PORT}:5432"
     volumes:
       - keycloak_data:/var/lib/postgresql/data
+    command: ["postgres", "-c", "logging_collector=off", "-c", "log_statement=none", "-c", "log_min_messages=panic", "-c", "log_checkpoints=off", "-c", "log_connections=off", "-c", "log_disconnections=off"]
     restart: unless-stopped
 
   keycloak:
@@ -40,13 +40,13 @@ services:
       - KC_DB_USERNAME=${KEYCLOAK_DB_USER}
       - KC_DB_PASSWORD=${KEYCLOAK_DB_PASSWORD}
       - KC_HTTP_ENABLED=true
-      - KC_LOG_LEVEL=INFO
+      - KC_LOG_LEVEL=ERROR
       - KC_METRICS_ENABLED=false
       - KEYCLOAK_ADMIN=${KEYCLOAK_ADMIN}
       - KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD}
       - KC_HOSTNAME_URL=${AUTHENTICATION_SERVER_URL}
     volumes:
-      - ./realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+      - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
     command:
       - start-dev
       - --import-realm
@@ -56,10 +56,29 @@ services:
       - keycloak-db
     restart: unless-stopped
 
+   
+  rabbitmq:
+      image: rabbitmq:3.13-management
+      container_name: rabbitmq
+      platform: linux/amd64
+      environment:
+
+        - RABBITMQ_LOG_LEVEL=warning
+      ports:
+        - "${RABBIT_AMQP_PORT}:5672" # AMQP
+        - "${RABBIT_MANAGEMENT_PORT}:15672" # Management UI
+      volumes:
+        - rabbitmq_data:/var/lib/rabbitmq
+        - ./rabbitmq/definitions.json:/tmp/definitions.json:ro
+        - ./rabbitmq/init.sh:/tmp/init.sh:ro
+        - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      entrypoint: ["bash", "/tmp/init.sh"]
+      restart: unless-stopped
+
   account-service:
     build:
-      context: AccountService/
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: AccountService/Dockerfile
     container_name: account-service
     platform: linux/amd64
     ports:
@@ -67,6 +86,10 @@ services:
     depends_on:
       - keycloak
       - account-db
+      - rabbitmq
+    volumes:
+      - ./scripts/wait-for-all.sh:/tmp/wait-for-all.sh:ro
+    entrypoint: ["bash", "/tmp/wait-for-all.sh", "dotnet", "AccountService.dll"]
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - Authentication__AuthenticationServerUrl=${AUTHENTICATION_SERVER_URL}
@@ -75,8 +98,18 @@ services:
       - Authentication__AdminUsername=${KEYCLOAK_ADMIN}
       - Authentication__AdminPassword=${KEYCLOAK_ADMIN_PASSWORD}
       - ConnectionStrings__DefaultConnection=Host=account-db;Database=${ACCOUNT_DB};Username=${ACCOUNT_DB_USER};Password=${ACCOUNT_DB_PASSWORD}
+      - RabbitMq__Host=rabbitmq
+      - RabbitMq__Port=${RABBIT_AMQP_PORT}
+      - RabbitMq__User=admin
+      - RabbitMq__Password=admin
+      - RabbitMq__VirtualHost=/
+      - Messaging__Exchange=${MESSAGING_EXCHANGE}
+      - Messaging__ServiceName=${ACCOUNT_SERVICE_NAME}
+      - Messaging__AuditQueueName=account.audit
+      - KeycloakPort=${KEYCLOAK_PORT}
     restart: unless-stopped
 
 volumes:
   account_data:
   keycloak_data:
+  rabbitmq_data:

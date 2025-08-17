@@ -1,4 +1,4 @@
-﻿namespace AccountService.Common.Models.Api;
+namespace AccountService.Common.Models.Api;
 
 public abstract class ApiResponse
 {

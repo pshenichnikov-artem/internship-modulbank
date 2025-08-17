@@ -5,6 +5,7 @@ using AccountService.Features.Transactions;
 using AccountService.Features.Transactions.Commands.CreateTransaction;
 using AccountService.Features.Transactions.Models;
 using AutoMapper;
+using Messaging.Interfaces;
 using Microsoft.Extensions.Logging;
 using Moq;
 
@@ -16,13 +17,15 @@ public class TransactionServiceTests
     private readonly Mock<ICurrencyService> _currencyService = new();
     private readonly Mock<ILogger<TransactionService>> _logger = new();
     private readonly Mock<IMapper> _mapper = new();
+    private readonly Mock<IOutboxService> _outboxService = new();
     private readonly TransactionService _service;
     private readonly Mock<ITransactionRepository> _transactionRepo = new();
+
 
     public TransactionServiceTests()
     {
         _service = new TransactionService(_transactionRepo.Object, _accountRepo.Object,
-            _currencyService.Object, _mapper.Object, _logger.Object);
+            _currencyService.Object, _mapper.Object, _outboxService.Object, _logger.Object);
     }
 
     [Fact]

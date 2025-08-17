@@ -1,4 +1,4 @@
-﻿namespace AccountService.Common.Models.Domain.Results;
+namespace AccountService.Common.Models.Domain.Results;
 
 public class CommandResult<T>
 {

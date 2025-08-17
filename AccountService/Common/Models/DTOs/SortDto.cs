@@ -1,4 +1,4 @@
-﻿using AccountService.Common.Models.Domain;
+using AccountService.Common.Models.Domain;
 using Swashbuckle.AspNetCore.Annotations;
 
 namespace AccountService.Common.Models.DTOs;

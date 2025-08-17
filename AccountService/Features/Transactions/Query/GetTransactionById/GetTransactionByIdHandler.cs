@@ -1,4 +1,4 @@
-﻿using AccountService.Common.Interfaces.Repository;
+using AccountService.Common.Interfaces.Repository;
 using AccountService.Common.Models.Domain.Results;
 using AccountService.Features.Transactions.Models;
 using AutoMapper;
@@ -12,9 +12,9 @@ public class GetTransactionByIdHandler(
     : IRequestHandler<GetTransactionByIdQuery, CommandResult<Dictionary<string, object?>>>
 {
     public async Task<CommandResult<Dictionary<string, object?>>> Handle(GetTransactionByIdQuery request,
-        CancellationToken cancellationToken)
+        CancellationToken ct)
     {
-        var transaction = await transactionRepository.GetTransactionByIdAsync(request.Id, cancellationToken);
+        var transaction = await transactionRepository.GetTransactionByIdAsync(request.Id, ct);
         if (transaction == null)
             return CommandResult<Dictionary<string, object?>>.Failure(404, $"Транзакция с ID {request.Id} не найдена");
 

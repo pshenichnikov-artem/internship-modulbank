@@ -1,3 +1,4 @@
+using System.Reflection;
 using AccountService.Common.Models;
 using Asp.Versioning.ApiExplorer;
 using Microsoft.OpenApi.Models;
@@ -10,7 +11,7 @@ public static class SwaggerExtensions
     {
         var provider = services.BuildServiceProvider().GetRequiredService<IApiVersionDescriptionProvider>();
         var authSettings = services.BuildServiceProvider().GetRequiredService<AuthenticationSettings>();
-        var keycloakPort = configuration["KEYCLOAK_PORT"] ?? "8080";
+        var keycloakPort = configuration["KeycloakPort"] ?? "8080";
 
         services.AddSwaggerGen(options =>
         {
@@ -23,7 +24,6 @@ public static class SwaggerExtensions
                 });
 
             options.CustomSchemaIds(id => id.FullName!.Replace('+', '-'));
-
             options.AddSecurityDefinition("Keycloak", new OpenApiSecurityScheme
             {
                 Name = "Keycloak",
@@ -52,6 +52,14 @@ public static class SwaggerExtensions
                 }
             });
             options.EnableAnnotations();
+
+
+            options.DocInclusionPredicate((_, _) => true);
+
+            var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+            var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+            if (File.Exists(xmlPath))
+                options.IncludeXmlComments(xmlPath);
         });
 
         return services;

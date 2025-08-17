@@ -1,4 +1,4 @@
-﻿using AccountService.Common.Interfaces.Repository;
+using AccountService.Common.Interfaces.Repository;
 using AccountService.Common.Models.Domain.Results;
 using AccountService.Features.Transactions.Models;
 using AutoMapper;
@@ -10,7 +10,7 @@ public class GetTransactionsHandler(ITransactionRepository transactionRepository
     : IRequestHandler<GetTransactionsQuery, CommandResult<PagedResult<TransactionDto>>>
 {
     public async Task<CommandResult<PagedResult<TransactionDto>>> Handle(GetTransactionsQuery request,
-        CancellationToken cancellationToken)
+        CancellationToken ct)
     {
         try
         {
@@ -22,7 +22,7 @@ public class GetTransactionsHandler(ITransactionRepository transactionRepository
                 request.SortOrders.Select(so => so.ToSortOrder()).ToList(),
                 request.Pagination.Page,
                 request.Pagination.PageSize,
-                cancellationToken);
+                ct);
 
             var transactionsDto = mapper.Map<List<TransactionDto>>(transactions);
 

@@ -1,4 +1,4 @@
-﻿using AccountService.Common.Constants;
+using AccountService.Common.Constants;
 using AccountService.Common.Extensions;
 using AccountService.Common.Models.Api;
 using AccountService.Features.Transactions.Commands.CancelTransaction;
@@ -31,9 +31,9 @@ public class TransactionsController(IMediator mediator) : ControllerBase
     [SwaggerResponse(StatusCodes.Status500InternalServerError, SwaggerMessages.InternalError, typeof(ErrorResponse))]
     public async Task<IActionResult> PostSearchTransactions(
         [FromBody] GetTransactionsQuery query,
-        CancellationToken cancellationToken)
+        CancellationToken ct)
     {
-        var result = await mediator.Send(query, cancellationToken);
+        var result = await mediator.Send(query, ct);
         return ApiResult.FromCommandResult(result);
     }
 
@@ -46,12 +46,12 @@ public class TransactionsController(IMediator mediator) : ControllerBase
     [SwaggerResponse(StatusCodes.Status500InternalServerError, SwaggerMessages.InternalError, typeof(ErrorResponse))]
     public async Task<IActionResult> GetTransaction(
         [FromRoute] Guid id,
-        CancellationToken cancellationToken,
+        CancellationToken ct,
         [FromQuery] List<string>? fields = null
     )
     {
         var query = new GetTransactionByIdQuery(id, fields);
-        var result = await mediator.Send(query, cancellationToken);
+        var result = await mediator.Send(query, ct);
         return ApiResult.FromCommandResult(result);
     }
 
@@ -65,10 +65,10 @@ public class TransactionsController(IMediator mediator) : ControllerBase
     [SwaggerResponse(StatusCodes.Status500InternalServerError, SwaggerMessages.InternalError, typeof(ErrorResponse))]
     public async Task<IActionResult> CreateTransaction(
         [FromBody] CreateTransactionCommand request,
-        CancellationToken cancellationToken)
+        CancellationToken ct)
     {
         request.OwnerId = User.GetUserId();
-        var result = await mediator.Send(request, cancellationToken);
+        var result = await mediator.Send(request, ct);
         return ApiResult.FromCommandResult(result, nameof(GetTransaction), new { id = result.Data });
     }
 
@@ -83,7 +83,7 @@ public class TransactionsController(IMediator mediator) : ControllerBase
     public async Task<IActionResult> UpdateTransaction(
         [FromRoute] Guid id,
         [FromBody] string description,
-        CancellationToken cancellationToken)
+        CancellationToken ct)
     {
         var command = new UpdateTransactionCommand
         {
@@ -91,7 +91,7 @@ public class TransactionsController(IMediator mediator) : ControllerBase
             Description = description,
             OwnerId = User.GetUserId()
         };
-        var result = await mediator.Send(command, cancellationToken);
+        var result = await mediator.Send(command, ct);
         return ApiResult.FromCommandResult(result);
     }
 
@@ -105,7 +105,7 @@ public class TransactionsController(IMediator mediator) : ControllerBase
     [SwaggerResponse(StatusCodes.Status403Forbidden, SwaggerMessages.Forbidden, typeof(ErrorResponse))]
     [SwaggerResponse(StatusCodes.Status404NotFound, SwaggerMessages.NotFound, typeof(ErrorResponse))]
     [SwaggerResponse(StatusCodes.Status500InternalServerError, SwaggerMessages.InternalError, typeof(ErrorResponse))]
-    public async Task<IActionResult> CancelTransaction([FromRoute] Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> CancelTransaction([FromRoute] Guid id, CancellationToken ct)
     {
         var command = new CancelTransactionCommand
         {
@@ -113,7 +113,7 @@ public class TransactionsController(IMediator mediator) : ControllerBase
             OwnerId = User.GetUserId()
         };
 
-        var result = await mediator.Send(command, cancellationToken);
+        var result = await mediator.Send(command, ct);
         return ApiResult.FromCommandResult(result);
     }
 }

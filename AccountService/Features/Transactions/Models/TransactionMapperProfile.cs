@@ -1,4 +1,4 @@
-﻿using AccountService.Features.Transactions.Commands.CreateTransaction;
+using AccountService.Features.Transactions.Commands.CreateTransaction;
 using AutoMapper;
 
 namespace AccountService.Features.Transactions.Models;

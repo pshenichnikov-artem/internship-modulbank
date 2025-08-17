@@ -1,4 +1,4 @@
-﻿using Swashbuckle.AspNetCore.Annotations;
+using Swashbuckle.AspNetCore.Annotations;
 
 // ReSharper disable UnusedMember.Global
 // DTO используется только для сериализации ответа
@@ -27,4 +27,7 @@ public class AccountDto
 
     [SwaggerSchema(Description = "Дата закрытия счета (null для активных счетов)")]
     public DateTime? ClosedAt { get; set; }
+
+    [SwaggerSchema(Description = "Аккаунт находится в замарозке")]
+    public bool IsFrozen { get; set; }
 }

@@ -1,10 +1,14 @@
-﻿using AccountService.Common.Interfaces.Repository;
+using AccountService.Common.Interfaces.Repository;
 using AccountService.Common.Interfaces.Service;
 using AccountService.Features.Transactions;
+using AccountService.Infrastructure.BackgroundServices;
 using AccountService.Infrastructure.Data;
+
 using AccountService.Infrastructure.Repositories;
 using AccountService.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
+
+// ReSharper disable NotResolvedInText
 
 namespace AccountService.Infrastructure;
 
@@ -23,6 +27,10 @@ public static class DependencyInjection
         services.AddSingleton<ICurrencyService, CurrencyService>();
         services.AddScoped<IAccountService, Features.Accounts.AccountService>();
         services.AddScoped<ITransactionService, TransactionService>();
+
+
+        services.AddHostedService<AntifraudConsumer>();
+
 
 
         return services;

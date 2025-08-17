@@ -1,4 +1,4 @@
-﻿using AccountService.Common.Models.Domain.Results;
+using AccountService.Common.Models.Domain.Results;
 using AccountService.Common.Models.DTOs;
 using AccountService.Features.Accounts.Model;
 using MediatR;

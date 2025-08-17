@@ -2,6 +2,12 @@
 
 Набор тестов для проверки функциональности AccountService.
 
+## Связанные тесты
+
+- **MessagingLibraryTests** - тесты библиотеки Messaging: [`../MessagingLibraryTests/README.md`](../MessagingLibraryTests/README.md)
+  - `AuditConsumerIntegrationTest` - тестирование консьюмера аудита
+  - `OutboxIntegrationTest` - тестирование Outbox Pattern
+
 ---
 
 ## Структура тестов
@@ -14,21 +20,43 @@
 
 ### Integration Tests
 
-**ParallelTransferTests** — интеграционные тесты для проверки потокобезопасности и параллельного выполнения операций.
+Интеграционные тесты с реальными контейнерами PostgreSQL и RabbitMQ:
 
-- Используется реальная база данных PostgreSQL, запущенная в тестовом Docker-контейнере.  
-- JWT-аутентификация мокнута, Keycloak не требуется.
+**ParallelTransferTests** — проверка потокобезопасности и параллельных операций
 
-Основные тесты:
+**ClientBlockedEventsIntegrationTest** — тестирование отправки событий через RabbitMQ
 
-- **ParallelTransfers_ShouldPreserveTotalBalance**  
-  Одновременное выполнение 50 переводов между двумя счетами с проверкой того, что общая сумма балансов не изменилась. Проверяется корректная работа механизмов блокировки и обработка конфликтов параллелизма.
+**OutboxDispatcherIntegrationTest** — тестирование Outbox Pattern и диспетчера сообщений
 
-- **CancelTransactions_Parallel_CorrectBalances**  
-  Одновременное выполнение отмены 50 транзакций разных типов (пополнение, списание, перевод) и проверка, что балансы счетов остаются корректными (не становятся отрицательными) и общая сумма балансов сохраняется. Тест проверяет корректность отката операций и целостность данных при параллельной отмене транзакций.
+**Особенности:**
+- Используются реальные Docker-контейнеры PostgreSQL и RabbitMQ
+- JWT-аутентификация мокнута, Keycloak не требуется
+- Автоматическое создание и очистка тестовой среды
+
+**Основные тесты:**
+
+- **ParallelTransfers_ShouldPreserveTotalBalance** (ParallelTransferTests)  
+  Одновременное выполнение 50 переводов между двумя счетами с проверкой сохранения общей суммы балансов. Проверяется корректная работа механизмов блокировки и обработка конфликтов параллелизма.
+
+- **CancelTransactions_Parallel_CorrectBalances** (ParallelTransferTests)  
+  Одновременная отмена 50 транзакций разных типов с проверкой корректности балансов и целостности данных при параллельной обработке.
+
+- **BlockClient_ShouldSendEventToRabbitMq** (ClientBlockedEventsIntegrationTest)  
+  Проверка отправки события блокировки клиента через RabbitMQ с валидацией получения сообщения и реакции на него в очереди antifraud.
+
+- **TransferEmitsSingleEvent** (OutboxDispatcherIntegrationTest)  
+  Проверка того, что перевод генерирует только одно событие TransferCompleted и оно корректно отправляется через Outbox Pattern.
 
 
 ---
+
+## Запуск тестов
+
+**Требования:** Docker для создания тестовых контейнеров
+
+```bash
+dotnet test
+```
 
 ## Технологии
 
@@ -37,3 +65,4 @@
 - **Moq** — библиотека для создания mock-объектов
 - **Microsoft.Extensions.Logging** — логирование в тестах
 - **Testcontainers.PostgreSql** — запуск PostgreSQL в Docker-контейнере для интеграционных тестов
+- **Testcontainers.RabbitMq** — запуск RabbitMQ в Docker-контейнере для тестирования сообщений

@@ -1,4 +1,4 @@
-﻿using AccountService.Common.Validators;
+using AccountService.Common.Validators;
 using AccountService.Features.Accounts.Model;
 using FluentValidation;
 
