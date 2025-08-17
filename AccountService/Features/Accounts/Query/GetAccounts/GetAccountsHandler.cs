@@ -1,4 +1,4 @@
-﻿using AccountService.Common.Interfaces.Repository;
+using AccountService.Common.Interfaces.Repository;
 using AccountService.Common.Models.Domain.Results;
 using AccountService.Features.Accounts.Model;
 using AutoMapper;
@@ -10,7 +10,7 @@ public class GetAccountsHandler(IAccountRepository accountRepository, IMapper ma
     : IRequestHandler<GetAccountsQuery, CommandResult<PagedResult<AccountDto>>>
 {
     public async Task<CommandResult<PagedResult<AccountDto>>> Handle(GetAccountsQuery request,
-        CancellationToken cancellationToken)
+        CancellationToken ct)
     {
         var (accounts, totalCount) = await accountRepository.GetAccountsAsync(
             request.Filters.OwnerIds,
@@ -19,7 +19,7 @@ public class GetAccountsHandler(IAccountRepository accountRepository, IMapper ma
             request.SortOrders?.Select(so => so.ToSortOrder()).ToList(),
             request.Pagination.Page,
             request.Pagination.PageSize,
-            cancellationToken);
+            ct);
 
         var accountsDto = mapper.Map<List<AccountDto>>(accounts);
 

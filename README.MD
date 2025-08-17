@@ -2,8 +2,12 @@
 
 Репозиторий с микросервисом управления банковскими счетами и транзакциями — **AccountService**.
 
-Основная документация и подробное описание сервиса находятся в каталоге [`AccountService/README.md`](./AccountService/README.md).  
-Информация о тестах находится в [`AccountServiceTests/README.md`](./AccountServiceTests/README.md)
+## Документация
+
+- **AccountService** - основной микросервис: [`AccountService/README.md`](./AccountService/README.md)
+- **Messaging Library** - библиотека для асинхронных сообщений: [`Messaging/README.md`](./Messaging/README.md)
+- **Тесты AccountService** - интеграционные и unit тесты: [`AccountServiceTests/README.md`](./AccountServiceTests/README.md)
+- **Тесты Messaging Library** - тесты библиотеки сообщений: [`MessagingLibraryTests/README.md`](./MessagingLibraryTests/README.md)
 
 ## Быстрый старт
 
@@ -16,7 +20,19 @@ git clone https://github.com/pshenichnikov-artem/internship-modulbank.git
 docker-compose up --build
 ```
 
+## Доступы к сервисам
+
+**RabbitMQ Management UI:** http://localhost:15672
+- Логин: `admin`
+- Пароль: `admin`
+
+**Keycloak Admin Console:** http://localhost:8080
+- Логин: `admin`
+- Пароль: `admin123`
+
 ## Запуск тестов
+**Требуется Docker** для создания тестовых контейнеров PostgreSQL и RabbitMQ.
+
 1. Перейдите в каталог AccountServiceTests:
 ```bash
 cd .\AccountServiceTests\

@@ -1,14 +1,45 @@
-﻿using AccountService.Features.Accounts.Model;
+using AccountService.Features.Accounts.Model;
 using AccountService.Features.Transactions.Models;
+using Messaging.Extensions;
+using Messaging.Interfaces;
+using Messaging.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace AccountService.Infrastructure.Data;
 
-public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : DbContext(options)
+public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+    : DbContext(options), IMessagingDbContext
 {
     public DbSet<Account> Accounts { get; set; }
     public DbSet<Transaction> Transactions { get; set; }
+
+
+    public DbSet<OutboxMessage> OutboxMessages { get; set; }
+    public DbSet<InboxConsumed> InboxConsumed { get; set; }
+    public DbSet<InboxDeadLetter> InboxDeadLetters { get; set; }
+    public DbSet<AuditEvent> AuditEvents { get; set; }
+
+    public override async Task<int> SaveChangesAsync(CancellationToken ct = default)
+    {
+        foreach (var entry in ChangeTracker.Entries<Account>())
+            if (entry.State == EntityState.Deleted)
+            {
+                entry.State = EntityState.Modified;
+                entry.Entity.IsDeleted = true;
+                entry.Entity.ClosedAt ??= DateTime.UtcNow;
+            }
+
+        foreach (var entry in ChangeTracker.Entries<Transaction>())
+            if (entry.State == EntityState.Deleted)
+            {
+                entry.State = EntityState.Modified;
+                entry.Entity.IsCanceled = true;
+                entry.Entity.CanceledAt ??= DateTime.UtcNow;
+            }
+
+        return await base.SaveChangesAsync(ct);
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -42,6 +73,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
             entity.Property(e => e.Balance).HasPrecision(18, 2);
             entity.Property(e => e.InterestRate).HasPrecision(5, 2);
+            entity.Property(x => x.IsFrozen).HasDefaultValue(false);
 
             entity.HasQueryFilter(e => !e.IsDeleted);
 
@@ -74,26 +106,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 .HasDatabaseName("IX_Transactions_Timestamp_GiST")
                 .HasMethod("gist");
         });
-    }
 
-    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
-    {
-        foreach (var entry in ChangeTracker.Entries<Account>())
-            if (entry.State == EntityState.Deleted)
-            {
-                entry.State = EntityState.Modified;
-                entry.Entity.IsDeleted = true;
-                entry.Entity.ClosedAt ??= DateTime.UtcNow;
-            }
-
-        foreach (var entry in ChangeTracker.Entries<Transaction>())
-            if (entry.State == EntityState.Deleted)
-            {
-                entry.State = EntityState.Modified;
-                entry.Entity.IsCanceled = true;
-                entry.Entity.CanceledAt ??= DateTime.UtcNow;
-            }
-
-        return await base.SaveChangesAsync(cancellationToken);
+        modelBuilder.AddMessagingEntities();
     }
 }

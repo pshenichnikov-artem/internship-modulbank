@@ -1,6 +1,7 @@
 using AccountService.Common.Interfaces.Repository;
 using AccountService.Features.Accounts.Commands.DeleteAccount;
 using AccountService.Features.Accounts.Model;
+using Messaging.Interfaces;
 using Microsoft.Extensions.Logging;
 using Moq;
 
@@ -9,12 +10,13 @@ namespace AccountServiceTests.Unit;
 public class DeleteAccountHandlerTests
 {
     private readonly Mock<IAccountRepository> _accountRepo = new();
-    private readonly Mock<ILogger<DeleteAccountHandler>> _logger = new();
     private readonly DeleteAccountHandler _handler;
+    private readonly Mock<ILogger<DeleteAccountHandler>> _logger = new();
+    private readonly Mock<IOutboxService> _outboxService = new();
 
     public DeleteAccountHandlerTests()
     {
-        _handler = new DeleteAccountHandler(_accountRepo.Object, _logger.Object);
+        _handler = new DeleteAccountHandler(_accountRepo.Object, _outboxService.Object, _logger.Object);
     }
 
     [Fact]
@@ -45,7 +47,8 @@ public class DeleteAccountHandlerTests
     public async Task Handle_AccountNotFound_Failure()
     {
         var accountId = Guid.NewGuid();
-        _accountRepo.Setup(x => x.GetAccountByIdAsync(accountId, It.IsAny<CancellationToken>())).ReturnsAsync((Account?)null);
+        _accountRepo.Setup(x => x.GetAccountByIdAsync(accountId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Account?)null);
 
         var command = new DeleteAccountCommand { AccountId = accountId, OwnerId = Guid.NewGuid() };
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -59,7 +62,7 @@ public class DeleteAccountHandlerTests
     {
         var accountId = Guid.NewGuid();
         var account = new Account { Id = accountId, OwnerId = Guid.NewGuid(), Balance = 0m };
-        
+
         _accountRepo.Setup(x => x.GetAccountByIdAsync(accountId, It.IsAny<CancellationToken>())).ReturnsAsync(account);
 
         var command = new DeleteAccountCommand { AccountId = accountId, OwnerId = Guid.NewGuid() };

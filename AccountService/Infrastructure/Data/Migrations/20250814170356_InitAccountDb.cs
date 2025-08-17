@@ -1,4 +1,4 @@
-﻿using AccountService.Infrastructure.Data;
+using AccountService.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore.Migrations;
 using System;
 
@@ -7,13 +7,14 @@ using System;
 namespace AccountService.Infrastructure.Data.Migrations
 {
     /// <inheritdoc />
-    public partial class Init : Migration
+    public partial class InitAccountDb : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.Sql("CREATE EXTENSION IF NOT EXISTS btree_gist;");
             migrationBuilder.Sql(StoredProcedures.GetAccrueInterestProcedureScript());
+
             migrationBuilder.CreateTable(
                 name: "Accounts",
                 columns: table => new
@@ -27,6 +28,7 @@ namespace AccountService.Infrastructure.Data.Migrations
                     OpenedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
                     ClosedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
                     IsDeleted = table.Column<bool>(type: "boolean", nullable: false),
+                    IsFrozen = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
                     LastInterestAccrual = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },

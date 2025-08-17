@@ -1,4 +1,4 @@
-﻿// ReSharper disable UnusedMember.Global Данные поля не используются в коде так как это DTO передается в качестве ответа на запрос
+// ReSharper disable UnusedMember.Global Данные поля не используются в коде так как это DTO передается в качестве ответа на запрос
 
 namespace AccountService.Common.Models.Domain.Results;
 

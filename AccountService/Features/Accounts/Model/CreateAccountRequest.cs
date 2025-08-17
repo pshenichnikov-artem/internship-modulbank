@@ -1,7 +1,6 @@
-using AccountService.Features.Accounts.Model;
 using Swashbuckle.AspNetCore.Annotations;
 
-namespace AccountService.Features.Accounts.Commands.CreateAccount;
+namespace AccountService.Features.Accounts.Model;
 
 public record CreateAccountRequest
 {

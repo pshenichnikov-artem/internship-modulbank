@@ -1,4 +1,4 @@
-﻿using AccountService.Features.Accounts.Commands.CreateAccount;
+using AccountService.Features.Accounts.Commands.CreateAccount;
 using AccountService.Features.Accounts.Commands.UpdateAccount;
 using AutoMapper;
 

@@ -1,4 +1,4 @@
-﻿namespace AccountService.Common.Extensions;
+namespace AccountService.Common.Extensions;
 
 public static class PaginationExtension
 {

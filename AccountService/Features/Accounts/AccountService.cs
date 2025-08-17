@@ -15,22 +15,22 @@ public class AccountService(
         Guid accountId,
         Guid ownerId,
         string newCurrency,
-        CancellationToken cancellationToken)
+        CancellationToken ct)
     {
-        await accountRepository.BeginTransactionAsync(cancellationToken);
+        await accountRepository.BeginTransactionAsync(ct);
 
         try
         {
-            var account = await accountRepository.GetAccountByIdForUpdateAsync(accountId, cancellationToken);
+            var account = await accountRepository.GetAccountByIdForUpdateAsync(accountId, ct);
             if (account == null)
             {
-                await accountRepository.RollbackAsync(cancellationToken);
+                await accountRepository.RollbackAsync(ct);
                 return CommandResult<Account>.Failure(404, $"Счет с ID {accountId} не найден");
             }
 
             if (account.OwnerId != ownerId)
             {
-                await accountRepository.RollbackAsync(cancellationToken);
+                await accountRepository.RollbackAsync(ct);
                 return CommandResult<Account>.Failure(403, "У вас нет доступа к этому счету");
             }
 
@@ -38,9 +38,9 @@ public class AccountService(
                 string.Equals(account.Currency, newCurrency, StringComparison.OrdinalIgnoreCase))
                 return CommandResult<Account>.Success(account);
 
-            if (!await currencyService.IsSupportedCurrencyAsync(newCurrency, cancellationToken))
+            if (!await currencyService.IsSupportedCurrencyAsync(newCurrency, ct))
             {
-                await accountRepository.RollbackAsync(cancellationToken);
+                await accountRepository.RollbackAsync(ct);
                 return CommandResult<Account>.Failure(400, $"Валюта {newCurrency} не поддерживается");
             }
 
@@ -52,20 +52,20 @@ public class AccountService(
         }
         catch (Exception pgEx) when (pgEx.IsConcurrencyException())
         {
-            logger.LogWarning(pgEx, "Конфликт параллелизма при обновлении валюты счета");
-            await accountRepository.RollbackAsync(cancellationToken);
+            logger.LogWarning("Конфликт параллелизма при обновлении валюты счета: {Error}", pgEx.Message);
+            await accountRepository.RollbackAsync(ct);
             return CommandResult<Account>.Failure(409, "Попробуйте снова.");
         }
         catch (Exception ex)
         {
-            logger.LogError(ex,
-                "Ошибка при обработке счета {AccountId} для клиента {OwnerId}: попытка изменить валюту на '{NewCurrency}' в {Timestamp}. Подробности ошибки: {ExceptionDetails}",
+            logger.LogError(
+                "Ошибка при обработке счета {AccountId} для клиента {OwnerId}: попытка изменить валюту на '{NewCurrency}' в {Timestamp}. Error: {Error}",
                 accountId,
                 ownerId,
                 newCurrency,
                 DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"),
-                ex.ToString());
-            await accountRepository.RollbackAsync(cancellationToken);
+                ex.Message);
+            await accountRepository.RollbackAsync(ct);
             return CommandResult<Account>.Failure(500, ex.Message);
         }
     }

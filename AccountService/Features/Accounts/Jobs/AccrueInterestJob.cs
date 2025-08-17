@@ -44,7 +44,7 @@ public class AccrueInterestJob(IAccountRepository accountRepository, IMediator m
                 }
                 catch (Exception ex)
                 {
-                    Log.Error(ex, "Ошибка начисления процентов для счёта {AccountId}", account.Id);
+                    Log.Error("Ошибка начисления процентов для счёта {AccountId}: {Error}", account.Id, ex.Message);
                     errorCount++;
                 }
             }
@@ -54,7 +54,7 @@ public class AccrueInterestJob(IAccountRepository accountRepository, IMediator m
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Критическая ошибка при выполнении ежедневного начисления процентов");
+            Log.Error("Критическая ошибка при выполнении ежедневного начисления процентов: {Error}", ex.Message);
         }
     }
 }

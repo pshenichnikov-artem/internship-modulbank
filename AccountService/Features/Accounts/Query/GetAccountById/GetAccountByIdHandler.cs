@@ -1,4 +1,4 @@
-﻿using AccountService.Common.Interfaces.Repository;
+using AccountService.Common.Interfaces.Repository;
 using AccountService.Common.Models.Domain.Results;
 using AccountService.Features.Accounts.Model;
 using AutoMapper;
@@ -12,9 +12,9 @@ public class GetAccountByIdHandler(
     : IRequestHandler<GetAccountByIdQuery, CommandResult<Dictionary<string, object?>>>
 {
     public async Task<CommandResult<Dictionary<string, object?>>> Handle(GetAccountByIdQuery request,
-        CancellationToken cancellationToken)
+        CancellationToken ct)
     {
-        var account = await accountRepository.GetAccountByIdAsync(request.Id, cancellationToken);
+        var account = await accountRepository.GetAccountByIdAsync(request.Id, ct);
         if (account == null)
             return CommandResult<Dictionary<string, object?>>.Failure(404, $"Счет с ID {request.Id} не найден");
 

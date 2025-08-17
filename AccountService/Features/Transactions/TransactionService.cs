@@ -7,6 +7,8 @@ using AccountService.Features.Transactions.Commands.CreateTransaction;
 using AccountService.Features.Transactions.Models;
 using AutoMapper;
 using FluentValidation;
+using Messaging.Events;
+using Messaging.Interfaces;
 
 namespace AccountService.Features.Transactions;
 
@@ -15,18 +17,19 @@ public class TransactionService(
     IAccountRepository accountRepository,
     ICurrencyService currencyService,
     IMapper mapper,
+    IOutboxService outboxService,
     ILogger<TransactionService> logger)
     : ITransactionService
 {
     public async Task<CommandResult<Guid>> CreateTransactionAsync(CreateTransactionCommand request,
-        CancellationToken cancellationToken)
+        CancellationToken ct)
     {
-        await accountRepository.BeginTransactionAsync(cancellationToken);
+        await accountRepository.BeginTransactionAsync(ct);
 
         try
         {
             var (account, counterpartyAccount, validationError) =
-                await ValidateAccountsAsync(request, cancellationToken);
+                await ValidateAccountsAsync(request, ct);
             if (validationError != null)
                 return CommandResult<Guid>.Failure(validationError.Value.StatusCode, validationError.Value.Message);
 
@@ -46,39 +49,43 @@ public class TransactionService(
 
             var transaction = mapper.Map<Transaction>(request);
             transaction.Type = request.Type;
-            var currencyCheck = await CheckCurrencies(transaction, account, counterpartyAccount, cancellationToken);
+            var currencyCheck = await CheckCurrencies(transaction, account, counterpartyAccount, ct);
             if (!currencyCheck.IsSuccess)
                 return CommandResult<Guid>.Failure(currencyCheck.CommandError!.StatusCode,
                     currencyCheck.CommandError.Message);
 
             var result = counterpartyAccount != null
-                ? await ApplyTransferAsync(transaction, account, counterpartyAccount, cancellationToken)
-                : await ApplySingleTransactionAsync(transaction, account, cancellationToken);
+                ? await ApplyTransferAsync(transaction, account, counterpartyAccount, ct)
+                : await ApplySingleTransactionAsync(transaction, account, ct);
 
             if (!result.IsSuccess)
             {
-                await accountRepository.RollbackAsync(cancellationToken);
+                await accountRepository.RollbackAsync(ct);
                 return CommandResult<Guid>.Failure(result.CommandError!.StatusCode, result.CommandError.Message);
             }
 
-            await transactionRepository.CreateTransactionAsync(transaction, cancellationToken);
-            await accountRepository.CommitAsync(cancellationToken);
+            await transactionRepository.CreateTransactionAsync(transaction, ct);
+
+            await PublishTransactionEventAsync(transaction, account, counterpartyAccount, ct);
+
+            await accountRepository.CommitAsync(ct);
 
             return CommandResult<Guid>.Success(transaction.Id);
         }
         catch (Exception pgEx) when (pgEx.IsConcurrencyException())
         {
-            logger.LogWarning(pgEx, "Конфликт параллелизма при создании транзакции");
-            await accountRepository.RollbackAsync(cancellationToken);
+            logger.LogWarning("Конфликт параллелизма при создании транзакции. AccountId: {AccountId}, CounterpartyId: {CounterpartyId}, OwnerId: {OwnerId}, Type: {Type}, Amount: {Amount}, Currency: {Currency}, Time: {Time}, Error: {Error}", 
+                request.AccountId, request.CounterpartyAccountId, request.OwnerId, request.Type, request.Amount, request.Currency, DateTime.UtcNow.ToString("HH:mm:ss"), pgEx.Message);
+            await accountRepository.RollbackAsync(ct);
             return CommandResult<Guid>.Failure(409, "Конфликт обновления данных. Попробуйте снова.");
         }
         catch (Exception ex)
         {
-            logger.LogError(ex,
+            logger.LogError(
                 "Ошибка при создании транзакции. " +
                 "AccountId: {AccountId}, CounterpartyId: {CounterpartyId}, " +
                 "OwnerId: {OwnerId}, Type: {Type}, Amount: {Amount}, Currency: {Currency}, " +
-                "Request: {@Request} RequestTime: {RequestTime},",
+                "Request: {@Request} RequestTime: {RequestTime}, Error: {Error}",
                 request.AccountId,
                 request.CounterpartyAccountId,
                 request.OwnerId,
@@ -86,20 +93,21 @@ public class TransactionService(
                 request.Amount,
                 request.Currency,
                 request,
-                DateTime.UtcNow);
-            await accountRepository.RollbackAsync(cancellationToken);
+                DateTime.UtcNow,
+                ex.Message);
+            await accountRepository.RollbackAsync(ct);
             return CommandResult<Guid>.Failure(500, ex.Message);
         }
     }
 
     public async Task<CommandResult<object>> CancelTransactionAsync(Guid transactionId, Guid ownerId,
-        CancellationToken cancellationToken)
+        CancellationToken ct)
     {
-        await accountRepository.BeginTransactionAsync(cancellationToken);
+        await accountRepository.BeginTransactionAsync(ct);
 
         try
         {
-            var transaction = await transactionRepository.GetTransactionByIdAsync(transactionId, cancellationToken);
+            var transaction = await transactionRepository.GetTransactionByIdAsync(transactionId, ct);
             if (transaction == null)
                 return CommandResult<object>.Failure(404, $"Транзакция с ID {transactionId} не найдена");
 
@@ -108,7 +116,7 @@ public class TransactionService(
 
             var (account, counterpartyAccount, validationError) =
                 await ValidateAccountsAsync(transaction.AccountId, transaction.CounterpartyAccountId,
-                    cancellationToken);
+                    ct);
             if (validationError != null)
                 return CommandResult<object>.Failure(validationError.Value.StatusCode, validationError.Value.Message);
 
@@ -116,63 +124,69 @@ public class TransactionService(
             if (ownerAccount.OwnerId != ownerId)
                 return CommandResult<object>.Failure(403, "У вас нет доступа к этой транзакции");
 
-            var currencyCheck = await CheckCurrencies(transaction, account, counterpartyAccount, cancellationToken);
+            var currencyCheck = await CheckCurrencies(transaction, account, counterpartyAccount, ct);
             if (!currencyCheck.IsSuccess)
                 return CommandResult<object>.Failure(currencyCheck.CommandError!.StatusCode,
                     currencyCheck.CommandError.Message);
 
             var result = counterpartyAccount != null
-                ? await RevertTransferAsync(transaction, account, counterpartyAccount, cancellationToken)
-                : await RevertSingleTransactionAsync(transaction, account, cancellationToken);
+                ? await RevertTransferAsync(transaction, account, counterpartyAccount, ct)
+                : await RevertSingleTransactionAsync(transaction, account, ct);
 
             if (!result.IsSuccess)
             {
-                await accountRepository.RollbackAsync(cancellationToken);
+                await accountRepository.RollbackAsync(ct);
                 return CommandResult<object>.Failure(result.CommandError!.StatusCode, result.CommandError.Message);
             }
 
             transaction.IsCanceled = true;
             transaction.CanceledAt = DateTime.UtcNow;
 
-            await transactionRepository.UpdateTransactionAsync(transaction, cancellationToken);
-            await accountRepository.CommitAsync(cancellationToken);
+            await transactionRepository.UpdateTransactionAsync(transaction, ct);
+
+            var transactionCanceled = new TransactionCanceled(transaction.Id, transaction.AccountId,
+                transaction.CounterpartyAccountId, transaction.Amount, transaction.Currency,
+                transaction.Type.ToString());
+            await outboxService.AddAsync(transactionCanceled, ct);
+
+            await accountRepository.CommitAsync(ct);
 
             return CommandResult<object>.Success();
         }
         catch (Exception pgEx) when (pgEx.IsConcurrencyException())
         {
-            logger.LogWarning(pgEx, "Конфликт параллелизма при отмене транзакции");
-            await accountRepository.RollbackAsync(cancellationToken);
+            logger.LogWarning("Конфликт параллелизма при отмене транзакции. TransactionId: {TransactionId}, OwnerId: {OwnerId}, Time: {Time}, Error: {Error}", 
+                transactionId, ownerId, DateTime.UtcNow.ToString("HH:mm:ss"), pgEx.Message);
+            await accountRepository.RollbackAsync(ct);
             return CommandResult<object>.Failure(409, "Конфликт обновления данных. Попробуйте снова.");
         }
         catch (Exception ex)
         {
-            logger.LogError(ex,
+            logger.LogError(
                 "Ошибка при отмене транзакции. TransactionId: {TransactionId}, OwnerId: {OwnerId}, " +
-                "RequestTime {RequestTime}",
+                "RequestTime {RequestTime}, Error: {Error}",
                 transactionId,
                 ownerId,
-                DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"));
-            await accountRepository.RollbackAsync(cancellationToken);
+                DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"),
+                ex.Message);
+            await accountRepository.RollbackAsync(ct);
             return CommandResult<object>.Failure(500, ex.Message);
         }
     }
 
     // == ВАЛИДАЦИЯ ==
 
-
-    /*
-     * Т.к. в GetAccountByIdForUpdateAsync используется FOR UPDATE,
-     * сначала получаем аккаунт с меньшим id (иначе возникает dead lock)
-     */
     private async Task<(Account account, Account? counterparty, (int StatusCode, string Message)? Error)>
-        ValidateAccountsAsync(CreateTransactionCommand request, CancellationToken cancellationToken = default)
+        ValidateAccountsAsync(CreateTransactionCommand request, CancellationToken ct = default)
     {
         if (request is { Type: TransactionType.Transfer, CounterpartyAccountId: null })
             return (null!, null, (400, "Не указан счёт контрагента для перевода"));
 
         if (request.Type != TransactionType.Transfer && request.CounterpartyAccountId != null)
             return (null!, null, (400, "Контрагент указан, но тип транзакции не Transfer"));
+
+        if (request.Type == TransactionType.Transfer && request.AccountId == request.CounterpartyAccountId)
+            return (null!, null, (400, "Нельзя переводить средства на тот же счет"));
 
         var idsToLock = new List<Guid> { request.AccountId };
         if (request.CounterpartyAccountId.HasValue)
@@ -184,7 +198,7 @@ public class TransactionService(
 
         foreach (var id in idsToLock)
         {
-            var acc = await accountRepository.GetAccountByIdForUpdateAsync(id, cancellationToken);
+            var acc = await accountRepository.GetAccountByIdForUpdateAsync(id, ct);
             if (acc == null)
                 return (null!, null, (404, $"Счёт {id} не найден"));
 
@@ -201,7 +215,7 @@ public class TransactionService(
 
 
     private async Task<(Account account, Account? counterparty, (int StatusCode, string Message)? Error)>
-        ValidateAccountsAsync(Guid accountId, Guid? counterpartyId, CancellationToken cancellationToken = default)
+        ValidateAccountsAsync(Guid accountId, Guid? counterpartyId, CancellationToken ct = default)
     {
         var idsToLock = new List<Guid> { accountId };
         if (counterpartyId.HasValue)
@@ -213,7 +227,7 @@ public class TransactionService(
 
         foreach (var id in idsToLock)
         {
-            var acc = await accountRepository.GetAccountByIdForUpdateAsync(id, cancellationToken);
+            var acc = await accountRepository.GetAccountByIdForUpdateAsync(id, ct);
             if (acc == null)
                 return (null!, null, (404, $"Счёт {id} не найден"));
 
@@ -229,15 +243,15 @@ public class TransactionService(
     }
 
     private async Task<CommandResult<object>> CheckCurrencies(Transaction tx, Account a, Account? c,
-        CancellationToken cancellationToken = default)
+        CancellationToken ct = default)
     {
-        if (!await currencyService.IsSupportedCurrencyAsync(tx.Currency, cancellationToken))
+        if (!await currencyService.IsSupportedCurrencyAsync(tx.Currency, ct))
             return CommandResult<object>.Failure(400, $"Валюта {tx.Currency} не поддерживается");
 
-        if (!await currencyService.IsSupportedCurrencyAsync(a.Currency, cancellationToken))
+        if (!await currencyService.IsSupportedCurrencyAsync(a.Currency, ct))
             return CommandResult<object>.Failure(400, $"Валюта счёта {a.Currency} не поддерживается");
 
-        if (c != null && !await currencyService.IsSupportedCurrencyAsync(c.Currency, cancellationToken))
+        if (c != null && !await currencyService.IsSupportedCurrencyAsync(c.Currency, ct))
             return CommandResult<object>.Failure(400, $"Валюта счёта контрагента {c.Currency} не поддерживается");
 
         return CommandResult<object>.Success();
@@ -246,10 +260,13 @@ public class TransactionService(
     // == ПРИМЕНЕНИЕ ТРАНЗАКЦИЙ ==
 
     private async Task<CommandResult<object>> ApplySingleTransactionAsync(Transaction tx, Account account,
-        CancellationToken cancellationToken = default)
+        CancellationToken ct = default)
     {
         if (account.Type == AccountType.Deposit && tx.Type == TransactionType.Debit)
             return CommandResult<object>.Failure(400, "С депозита нельзя списывать средства");
+
+        if (account.IsFrozen && tx.Type == TransactionType.Debit)
+            return CommandResult<object>.Failure(409, "Счет заморожен, списание запрещено");
 
         var amount = ConvertAmount(tx.Amount, tx.Currency, account.Currency);
 
@@ -270,15 +287,18 @@ public class TransactionService(
                 return CommandResult<object>.Failure(400, "Неверный тип транзакции");
         }
 
-        await accountRepository.UpdateAccountAsync(account, cancellationToken);
+        await accountRepository.UpdateAccountAsync(account, ct);
         return CommandResult<object>.Success();
     }
 
     private async Task<CommandResult<object>> ApplyTransferAsync(Transaction tx, Account account, Account counterparty,
-        CancellationToken cancellationToken = default)
+        CancellationToken ct = default)
     {
         var amountFrom = ConvertAmount(tx.Amount, tx.Currency, counterparty.Currency);
         var amountTo = ConvertAmount(tx.Amount, tx.Currency, account.Currency);
+
+        if (counterparty.IsFrozen)
+            return CommandResult<object>.Failure(409, "Счет отправителя заморожен, перевод запрещен");
 
         if (!CanWithdraw(counterparty, amountFrom))
             return CommandResult<object>.Failure(400, "Недостаточно средств на счёте контрагента");
@@ -286,8 +306,8 @@ public class TransactionService(
         counterparty.Balance -= amountFrom;
         account.Balance += amountTo;
 
-        await accountRepository.UpdateAccountAsync(counterparty, cancellationToken);
-        await accountRepository.UpdateAccountAsync(account, cancellationToken);
+        await accountRepository.UpdateAccountAsync(counterparty, ct);
+        await accountRepository.UpdateAccountAsync(account, ct);
 
         return CommandResult<object>.Success();
     }
@@ -295,7 +315,7 @@ public class TransactionService(
     // == ОТМЕНА ТРАНЗАКЦИЙ ==
 
     private async Task<CommandResult<object>> RevertSingleTransactionAsync(Transaction tx, Account account,
-        CancellationToken cancellationToken = default)
+        CancellationToken ct = default)
     {
         var amount = ConvertAmount(tx.Amount, tx.Currency, account.Currency);
 
@@ -312,12 +332,12 @@ public class TransactionService(
 
         account.Balance = newBalance;
 
-        await accountRepository.UpdateAccountAsync(account, cancellationToken);
+        await accountRepository.UpdateAccountAsync(account, ct);
         return CommandResult<object>.Success();
     }
 
     private async Task<CommandResult<object>> RevertTransferAsync(Transaction tx, Account account, Account counterparty,
-        CancellationToken cancellationToken = default)
+        CancellationToken ct = default)
     {
         var amountTo = ConvertAmount(tx.Amount, tx.Currency, counterparty.Currency);
         var amountFrom = ConvertAmount(tx.Amount, tx.Currency, account.Currency);
@@ -328,8 +348,8 @@ public class TransactionService(
         account.Balance -= amountFrom;
         counterparty.Balance += amountTo;
 
-        await accountRepository.UpdateAccountAsync(account, cancellationToken);
-        await accountRepository.UpdateAccountAsync(counterparty, cancellationToken);
+        await accountRepository.UpdateAccountAsync(account, ct);
+        await accountRepository.UpdateAccountAsync(counterparty, ct);
 
         return CommandResult<object>.Success();
     }
@@ -351,5 +371,32 @@ public class TransactionService(
         return string.Equals(fromCurrency, toCurrency, StringComparison.OrdinalIgnoreCase)
             ? amount
             : currencyService.Convert(amount, fromCurrency, toCurrency);
+    }
+
+    private async Task PublishTransactionEventAsync(Transaction transaction, Account account,
+        Account? counterpartyAccount, CancellationToken ct)
+    {
+        switch (transaction.Type)
+        {
+            case TransactionType.Credit:
+                var credited = new MoneyCredited(account.Id, transaction.Amount,
+                    transaction.Currency, transaction.Id);
+                await outboxService.AddAsync(credited, ct);
+                break;
+
+            case TransactionType.Debit:
+                var debited = new MoneyDebited(account.Id, transaction.Amount,
+                    transaction.Currency, transaction.Id);
+                await outboxService.AddAsync(debited, ct);
+                break;
+
+            case TransactionType.Transfer when counterpartyAccount != null:
+                var transfer = new MoneyTransfer(counterpartyAccount.Id, account.Id,
+                    transaction.Amount, transaction.Currency, transaction.Id);
+                await outboxService.AddAsync(transfer, ct);
+                break;
+            default:
+                throw new ArgumentOutOfRangeException();
+        }
     }
 }

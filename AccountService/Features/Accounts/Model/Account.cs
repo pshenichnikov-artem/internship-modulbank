@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using AccountService.Features.Transactions.Models;
 
@@ -16,8 +16,10 @@ public class Account
     public DateTime? ClosedAt { get; set; }
     public List<Transaction> Transactions { get; set; } = [];
     public bool IsDeleted { get; set; }
+    public bool IsFrozen { get; set; } = false;
 
-    // ReSharper disable once UnusedMember.Global Используется в процедуре StoredProcedures
+
+    //ReSharper disable once UnusedMember.Global Используется в процедуре StoredProcedures
     public DateTime? LastInterestAccrual { get; set; } = null;
 
     [NotMapped] [Timestamp] public uint Version { get; set; }

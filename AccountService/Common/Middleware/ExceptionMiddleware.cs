@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using System.Text.Json;
 using AccountService.Common.Models.Api;
 
@@ -32,11 +32,10 @@ public class ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddlewa
         var request = context.Request;
         logger.LogError(
             exception,
-            "Необработанное исключение при обработке запроса {Method} {Path}{QueryString}. TraceId: {TraceId}",
+            "Необработанное исключение при обработке запроса {Method} {Path}{QueryString}.",
             request.Method,
             request.Path,
-            request.QueryString,
-            context.TraceIdentifier);
+            request.QueryString);
     }
 
     private static async Task HandleExceptionAsync(HttpContext context, Exception exception)

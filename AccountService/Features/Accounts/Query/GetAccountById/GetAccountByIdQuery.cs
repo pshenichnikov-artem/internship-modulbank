@@ -1,4 +1,4 @@
-﻿using AccountService.Common.Models.Domain.Results;
+using AccountService.Common.Models.Domain.Results;
 using MediatR;
 using Swashbuckle.AspNetCore.Annotations;
 

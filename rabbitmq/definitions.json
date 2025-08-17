@@ -1,0 +1,30 @@
+{
+  "rabbit_version": "3.13.0",
+  "users": [
+    { "name": "admin", "password": "admin", "tags": "administrator" }
+  ],
+  "vhosts": [{"name": "/"}],
+  "permissions": [
+    { "user": "admin", "vhost": "/", "configure": ".*", "write": ".*", "read": ".*" }
+  ],
+  "parameters": [],
+  "global_parameters": [],
+  "policies": [],
+  "queues": [
+    { "name": "account.crm", "vhost": "/", "durable": true, "auto_delete": false, "arguments": {} },
+    { "name": "account.notifications", "vhost": "/", "durable": true, "auto_delete": false, "arguments": {} },
+    { "name": "account.antifraud", "vhost": "/", "durable": true, "auto_delete": false, "arguments": {} },
+    { "name": "account.audit", "vhost": "/", "durable": true, "auto_delete": false, "arguments": {} },
+    { "name": "account.transactions", "vhost": "/", "durable": true, "auto_delete": false, "arguments": {} }
+  ],
+  "exchanges": [
+    { "name": "account.events", "vhost": "/", "type": "topic", "durable": true, "auto_delete": false, "internal": false, "arguments": {} }
+  ],
+  "bindings": [
+    { "source": "account.events", "vhost": "/", "destination": "account.crm", "destination_type": "queue", "routing_key": "account.*", "arguments": {} },
+    { "source": "account.events", "vhost": "/", "destination": "account.notifications", "destination_type": "queue", "routing_key": "money.*", "arguments": {} },
+    { "source": "account.events", "vhost": "/", "destination": "account.antifraud", "destination_type": "queue", "routing_key": "client.*", "arguments": {} },
+    { "source": "account.events", "vhost": "/", "destination": "account.transactions", "destination_type": "queue", "routing_key": "transaction.*", "arguments": {} },
+    { "source": "account.events", "vhost": "/", "destination": "account.audit", "destination_type": "queue", "routing_key": "#", "arguments": {} }
+  ]
+}

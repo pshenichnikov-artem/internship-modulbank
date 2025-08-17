@@ -1,4 +1,4 @@
-﻿using AccountService.Common.Models.Domain;
+using AccountService.Common.Models.Domain;
 using Microsoft.EntityFrameworkCore;
 
 namespace AccountService.Common.Extensions;

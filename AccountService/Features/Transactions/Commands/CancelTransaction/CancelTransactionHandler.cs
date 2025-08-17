@@ -1,4 +1,4 @@
-﻿using AccountService.Common.Interfaces.Service;
+using AccountService.Common.Interfaces.Service;
 using AccountService.Common.Models.Domain.Results;
 using MediatR;
 
@@ -9,9 +9,9 @@ public class CancelTransactionHandler(
     : IRequestHandler<CancelTransactionCommand, CommandResult<object>>
 {
     public async Task<CommandResult<object>> Handle(CancelTransactionCommand request,
-        CancellationToken cancellationToken)
+        CancellationToken ct)
     {
         return await transactionService.CancelTransactionAsync(request.TransactionId, request.OwnerId,
-            cancellationToken);
+            ct);
     }
 }
