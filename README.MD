@@ -29,6 +29,7 @@ docker-compose up --build
 **Keycloak Admin Console:** http://localhost:8080
 - Логин: `admin`
 - Пароль: `admin123`
+- *Примечание: этот аккаунт является только административным и не подходит для авторизации в Swagger. Чтобы авторизоваться в Swagger, нужно создать пользовательский аккаунт: нажмите Authorize в Swagger UI(http://localhost), на странице Keycloak выберите Register и зарегистрируйте новый аккаунт.*
 
 ## Запуск тестов
 **Требуется Docker** для создания тестовых контейнеров PostgreSQL и RabbitMQ.
